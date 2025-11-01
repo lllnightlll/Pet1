@@ -2,30 +2,44 @@ package org.example.minimums;
 
 import org.example.Bot;
 
+import java.util.LinkedList;
+import java.util.List;
+
 public class MinStackImpl implements MinStack<Integer> {
-    private int n = 99999;
-    private static int max = 0;
-    int[] stack;
+    private int n = 100000;
 
-    MinStackImpl() {
-        stack = new int[n];
-    }
+    private List<MinStackNode> data = new LinkedList<>();
 
-    MinStackImpl(int k) {
-        if (k > 0) {
-            stack = new int[k];
-            n = k;
+    private class MinStackNode {
+        private int value;
+        private int min;
+
+        MinStackNode(int value, int min) {
+            this.value = value;
+            this.min = Math.min(value, min);
         }
 
+        public int getMin() {
+            return min;
+        }
+
+        public int getValue() {
+            return value;
+        }
     }
 
     @Override
     public void push(Integer value) {
         try {
-            if (max > n) {
+            if (data.size() > n) {
                 throw new Exception("So many elements");
             }
-            stack[max++] = value;
+            if (data.isEmpty()) {
+                data.add(new MinStackNode(value, value));
+            } else {
+                data.add(new MinStackNode(value, data.getLast().getMin()));
+            }
+
         } catch (Exception ex) {
             System.out.println(ex);
         }
@@ -34,10 +48,10 @@ public class MinStackImpl implements MinStack<Integer> {
     @Override
     public Integer pop() {
         try {
-            if (max == 0) {
+            if (data.isEmpty()) {
                 throw new Exception("Stack null");
             }
-            max--;
+            data.removeLast();
         } catch (Exception ex) {
             System.out.println(ex);
         }
@@ -47,10 +61,10 @@ public class MinStackImpl implements MinStack<Integer> {
     @Override
     public Integer top() {
         try {
-            if (max == 0) {
+            if (data.isEmpty()) {
                 throw new Exception("Stack null");
             }
-            return stack[max-1];
+            return data.getLast().getValue();
         } catch (Exception ex) {
             System.out.println(ex);
             return null;
@@ -60,16 +74,10 @@ public class MinStackImpl implements MinStack<Integer> {
     @Override
     public Integer min() {
         try {
-            if (max == 0) {
+            if (data.isEmpty()) {
                 throw new Exception("Stack null");
             }
-            int min = stack[0];
-            for (int i = 1; i < max; i++) {
-                if (stack[i] < min) {
-                    min = stack[i];
-                }
-            }
-            return min;
+            return data.getLast().getMin();
         } catch (Exception ex) {
             System.out.println(ex);
             return null;

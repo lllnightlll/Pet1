@@ -1,6 +1,7 @@
 package org.example.minimums;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class PriorityQueueImpl implements PriorityQueue<Integer> {
     private static class Element {
@@ -14,7 +15,7 @@ public class PriorityQueueImpl implements PriorityQueue<Integer> {
     }
 
     private Element[] heap;
-    HashMap<Long, Integer> operationToHeapIndex;
+    private Map<Long, Integer> operationToHeapIndex;
     private int size;
     private long operationCounter;
 
@@ -67,7 +68,6 @@ public class PriorityQueueImpl implements PriorityQueue<Integer> {
     @Override
     public Integer dequeueMax() {
         if (size == 0) {
-            System.out.println("*");
             return null;
         }
         Element max = heap[1];
@@ -76,7 +76,6 @@ public class PriorityQueueImpl implements PriorityQueue<Integer> {
         heap[size] = null;
         size--;
         siftDown(1);
-        System.out.println(max.operationIndex + " " + max.value);
         return max.value;
     }
 

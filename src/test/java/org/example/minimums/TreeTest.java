@@ -2,6 +2,9 @@ package org.example.minimums;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 public class TreeTest {
     private final PriorityQueue<Integer> tree = new PriorityQueueImpl(100000);
 
@@ -10,10 +13,10 @@ public class TreeTest {
         tree.enqueue(10);
         tree.enqueue(42);
         tree.enqueue(9);
-        tree.dequeueMax();
+        assertEquals(42, tree.dequeueMax());
         tree.increment(3, 10);
-        tree.dequeueMax();
-        tree.dequeueMax();
-        tree.dequeueMax();
+        assertEquals(19, tree.dequeueMax());
+        assertEquals(10, tree.dequeueMax());
+        assertNull(tree.dequeueMax());
     }
 }
