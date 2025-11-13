@@ -3,6 +3,19 @@ package org.example.Hash;
 public class HashMapImpl<V> implements HashMap<String, V> {
     private static final int TABLE_SIZE = 300007;
     private static final int A = 31;
+    private MAP<V>[] HashMAP = new MAP[TABLE_SIZE];
+
+    private static class MAP<V> {
+        private final V VALUE;
+
+        MAP(V VALUE) {
+            this.VALUE = VALUE;
+        }
+
+        V getVALUE() {
+            return VALUE;
+        }
+    }
 
     /**
      * Алгоритм хеширования строк.
@@ -20,18 +33,18 @@ public class HashMapImpl<V> implements HashMap<String, V> {
 
     @Override
     public void put(String key, V value) {
-        // TODO
+        this.HashMAP[(int) hashByString(key)] = new MAP<V>(value);
     }
 
     @Override
     public V getValue(String key) {
-        // TODO
-        return null;
+        int hash = (int) hashByString(key);
+        return this.HashMAP[hash] != null ? HashMAP[hash].getVALUE() : null;
     }
 
     @Override
     public V delete(String key) {
-        // TODO
+        this.HashMAP[(int) hashByString(key)] = null;
         return null;
     }
 }

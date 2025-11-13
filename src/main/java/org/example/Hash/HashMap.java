@@ -9,7 +9,6 @@ public interface HashMap<K, V> {
      * @param value значение для сохранения
      */
     void put(K key, V value);
-
     /**
      * Вернуть значение по ключу.
      *
