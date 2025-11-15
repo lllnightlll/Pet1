@@ -8,7 +8,7 @@ class StackTest {
     private final MinStack<Integer> stack = new MinStackImpl();
 
     @Test
-    void test() {
+    void test() throws Exception {
         stack.push(42);
         System.out.println(stack.top());
         System.out.println(stack.min());

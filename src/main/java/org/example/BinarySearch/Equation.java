@@ -8,7 +8,7 @@ public class Equation {
     private double a;
 
     public Equation() {
-        a = in.nextInt();
+        a = in.nextDouble();
         math();
     }
 
@@ -25,6 +25,6 @@ public class Equation {
                 else i = 0;
             }
         }
-        System.out.println("Result: " + x);
+        System.out.println("Result: " + (Math.round(x * Math.pow(10, n)) / Math.pow(10, n)));
     }
 }

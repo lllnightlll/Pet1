@@ -17,5 +17,9 @@ public class HashMapTest {
         System.out.println(x.getValue("name"));
         x.put("name", "vasya");
         System.out.println(x.getValue("name"));
+        x.delete("name");
+        System.out.println(x.getValue("name"));
+
+
     }
 }

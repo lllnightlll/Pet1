@@ -17,11 +17,19 @@ public class Search {
 
     static int searchElement(int serched, int x[]) {
         int sum = 0;
+
         for (int i = x.length / 2; i != 0; i /= 2) {
             if (x[i + sum] == serched)
-                return i;
-            else if (x[i] < serched)
+                return sum + i;
+            else if (x[i + sum] < serched)
                 sum += i;
+            // что-то не то со второй половиной
+        }
+
+        if (serched < x[x.length - 1]) {
+            System.out.println((x[sum] - serched) + " " + (x[sum + 1] - serched));
+            if ((x[sum] - serched) > (x[sum + 1] - serched)) System.out.println("true");
+            if ((serched - x[sum]) > (x[sum + 1] - serched)) return (sum + 1);
         }
         return sum;
     }
