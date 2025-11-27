@@ -9,7 +9,7 @@ public class Bagel {
 
     }
 
-    static void AntiBellmanFord(final int[][] matrix, int N, int M, int s) {
+    public static void AntiBellmanFord(final int[][] matrix, int N, int M) {
         int size = N * M;
         int[] dist = new int[size];
         int[] prev = new int[size];
@@ -46,8 +46,8 @@ public class Bagel {
         System.out.println(dist[size - 1]);
         while (cur != 0) {
             int p = prev[cur];
-            if (p == cur - 1) System.out.println("R");
-            else if (p == cur - M) System.out.println("D");
+            if (p == cur - 1) System.out.print("D");
+            else if (p == cur - M) System.out.print("R");
             cur = p;
         }
     }
