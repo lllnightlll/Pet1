@@ -1,12 +1,43 @@
 package org.example.Dinamyc;
 
+import java.io.*;
+
 public class Bagel {
     private int[][] matrix;
-    private int N;
-    private int M;
+    private int N = 0;
+    private int M = 0;
 
     public Bagel() {
+        try (BufferedReader file = new BufferedReader(new InputStreamReader(new FileInputStream("roguelike-input.csv"), "UTF-8"))) {
+            String line;
+            while ((line = file.readLine()) != null) {
+                M = line.split(";").length;
+                N++;
+            }
+        } catch (IOException ex) {
+            System.out.println(ex.getMessage());
+        }
 
+        try (BufferedReader file = new BufferedReader(new InputStreamReader(new FileInputStream("roguelike-input.csv"), "UTF-8"))) {
+            String line;
+            matrix = new int[N][M];
+            int i = 0;
+            while ((line = file.readLine()) != null) {
+                int j = 0;
+                String[] parts = line.split(";");
+                for (String p : parts) {
+                    if (!p.isEmpty()) {
+                        int value = Integer.parseInt(p.trim());
+                        matrix[i][j++] = value;
+                    }
+                }
+                i++;
+            }
+        } catch (IOException ex) {
+            System.out.println(ex.getMessage());
+        }
+
+        AntiBellmanFord(matrix, N, M);
     }
 
     public static void AntiBellmanFord(final int[][] matrix, int N, int M) {
@@ -42,14 +73,24 @@ public class Bagel {
                 }
             }
         }
-        int cur = size - 1;
-        System.out.println(dist[size - 1]);
-        while (cur != 0) {
-            int p = prev[cur];
-            if (p == cur - 1) System.out.print("D");
-            else if (p == cur - M) System.out.print("R");
-            cur = p;
+        try (BufferedWriter file = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("roguelike-output.txt"), "UTF-8"))) {
+            int cur = size - 1;
+            System.out.println(dist[size - 1]);
+            file.write(String.valueOf(dist[size - 1]));
+            file.newLine();
+            while (cur != 0) {
+                int p = prev[cur];
+                if (p == cur - 1) {
+                    System.out.print("D");
+                    file.write("D");
+                } else if (p == cur - M) {
+                    System.out.print("R");
+                    file.write("R");
+                }
+                cur = p;
+            }
+        } catch (IOException ex) {
+            System.out.println(ex.getMessage());
         }
     }
-
 }

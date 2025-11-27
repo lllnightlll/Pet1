@@ -3,8 +3,8 @@ import org.example.Dinamyc.NVP;
 import org.example.Dinamyc.NOP;
 
 void main() {
-    int[][] x = { {0, 1, 1, 0}, {0, 0, 2, 3}, {4, -2, 1, -1}, {-3, 8, -6, 0} };
-    Bagel.AntiBellmanFord(x, 4, 4);
+    //int[][] x = { {0, 1, 1, 0}, {0, 0, 2, 3}, {4, -2, 1, -1}, {-3, 8, -6, 0} };
+    //Bagel.AntiBellmanFord(x, 4, 4);
 
     //int[] x = {7, 1, 4, 3, 3, 5, 4, 8, 6, 9};
     //NVP.nvp(10, x);
@@ -12,4 +12,8 @@ void main() {
     //char[] x = {'A', 'B', 'C', 'D', 'E'};
     //char[] y = {'D', 'C', 'D', 'A'};
     //NOP.nop(x, y);
+
+    //Bagel x = new Bagel();
+    //NVP x = new NVP();
+    NOP x = new NOP();
 }
