@@ -13,7 +13,7 @@ void main() {
     //char[] y = {'D', 'C', 'D', 'A'};
     //NOP.nop(x, y);
 
-    //Bagel x = new Bagel();
-    //NVP x = new NVP();
-    NOP x = new NOP();
+    //Bagel x = new Bagel("roguelike-input.csv", "roguelike-output.txt");
+    NVP x = new NVP("lis-input.txt", "lis-output.txt");
+    //NOP x = new NOP("lcs-input.txt");
 }

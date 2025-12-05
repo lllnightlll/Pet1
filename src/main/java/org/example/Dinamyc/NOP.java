@@ -9,26 +9,38 @@ public class NOP {
     private char[] x;
     private char[] y;
 
-    public NOP() {
-        try (BufferedReader file = new BufferedReader(new InputStreamReader(new FileInputStream("lcs-input.txt"), "UTF-8"))) {
+    public NOP(char[] x, char[] y) {
+        System.out.println(nop(x, y));
+    }
+
+    public NOP(String inputFile) {
+        writeByFile(inputFile);
+    }
+
+    private void writeByFile(String inputFile) {
+        readFile(inputFile);
+        System.out.println(nop(x, y));
+    }
+
+    private void readFile(String inputFile) {
+        try (BufferedReader file = new BufferedReader(new InputStreamReader(new FileInputStream(inputFile), "UTF-8"))) {
             String line;
             int i = 0;
             while ((line = file.readLine()) != null) {
                 if (i == 0) {
-                    x = line.toCharArray();
+                    this.x = line.toCharArray();
                     i++;
                 }
                 else {
-                    y = line.toCharArray();
+                    this.y = line.toCharArray();
                 }
             }
-            nop(x, y);
         } catch (IOException ex) {
             System.out.println(ex.getMessage());
         }
     }
 
-    public static void nop(char[] x, char[] y) {
+    public static int nop(char[] x, char[] y) {
         int z = 0;
         for (int k = 0; k < x.length; k++) {
             int j = k;
@@ -46,6 +58,6 @@ public class NOP {
                 }
             }
         }
-        System.out.println(z);
+        return z;
     }
 }

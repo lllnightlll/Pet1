@@ -5,33 +5,66 @@ import java.io.*;
 public class NVP {
     private int n;
     private int[] x;
+    private static int[] data;
+    private static int j;
 
-    public NVP() {
-        try (BufferedReader file = new BufferedReader(new InputStreamReader(new FileInputStream("lis-input.txt"), "UTF-8"))) {
+    public NVP(String inputFile, String outputFile) {
+        writeByData(inputFile, outputFile);
+    }
+
+    private void writeByData(String inputFile, String outputFile) {
+        readFile(inputFile);
+        nvp(n, x, true);
+        writeFile(outputFile);
+    }
+
+    private void readFile(String inputFile) {
+        try (BufferedReader file = new BufferedReader(new InputStreamReader(new FileInputStream(inputFile), "UTF-8"))) {
             String line;
             int i = 0;
             while ((line = file.readLine()) != null) {
                 if (i == 0) {
-                    n = Integer.parseInt(line);
-                    x = new int[n];
+                    this.n = Integer.parseInt(line);
+                    this.x = new int[n];
                     i++;
                 } else {
                     String[] parts = line.split(" ");
                     int j = 0;
                     for (String p : parts) {
                         if (!p.isEmpty()) {
-                            x[j++] = Integer.parseInt(p.trim());
+                            this.x[j++] = Integer.parseInt(p.trim());
                         }
                     }
                 }
             }
-            nvp(n, x);
         } catch (IOException ex) {
             System.out.println(ex.getMessage());
         }
     }
 
+    private void writeFile(String outputFile) {
+        try (BufferedWriter file = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputFile), "UTF-8"))) {
+            file.write(j+"");
+            file.newLine();
+            for (int i = j - 1; i > -1; i--) {
+                file.write(data[i] + " ");
+            }
+        } catch (IOException ex) {
+            System.out.println(ex.getMessage());
+        }
+    }
+
+    private static void writeByConsole(int j, int[] x) {
+        System.out.println(j);
+        for (int i = j - 1; i > -1; i--) {
+            System.out.printf(data[i] + " ");
+        }
+    }
+
     public static void nvp(int n, int[] x) {
+        nvp(n, x, false);
+    }
+    public static void nvp(int n, int[] x, boolean f) {
         int pos = 0;
         int[] data = new int[n];
         for (int i = 0; i < n; i++) {
@@ -55,16 +88,11 @@ public class NVP {
             }
         }
 
-        try (BufferedWriter file = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("lis-output.txt"), "UTF-8"))) {
-            System.out.println(j);
-            file.write(j+"");
-            file.newLine();
-            for (int i = j - 1; i > -1; i--) {
-                System.out.printf(data[i] + " ");
-                file.write(data[i] + " ");
-            }
-        } catch (IOException ex) {
-            System.out.println(ex.getMessage());
+        if (f) {
+            NVP.data = data;
+            NVP.j = j;
+        } else {
+            writeByConsole(j, data);
         }
     }
 }

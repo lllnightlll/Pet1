@@ -1,46 +1,102 @@
 package org.example.Dinamyc;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Bagel {
     private int[][] matrix;
     private int N = 0;
     private int M = 0;
+    private static int[] dist;
+    private static int[] prev;
 
-    public Bagel() {
-        try (BufferedReader file = new BufferedReader(new InputStreamReader(new FileInputStream("roguelike-input.csv"), "UTF-8"))) {
+    public Bagel(int[][] matrix, int n, int m) {
+        AntiBellmanFord(matrix, n, m, false);
+    }
+
+    public Bagel(String dataPath, String outputPath) {
+        runByFile(dataPath, outputPath);
+    }
+
+    private void readFieldData(String filePath) {
+        try (BufferedReader file = new BufferedReader(new InputStreamReader(new FileInputStream(filePath), "UTF-8"))) {
             String line;
+            List<Integer> data = new ArrayList<>();
             while ((line = file.readLine()) != null) {
-                M = line.split(";").length;
+                String[] parts= line.split(";");
+                M = parts.length;
                 N++;
-            }
-        } catch (IOException ex) {
-            System.out.println(ex.getMessage());
-        }
-
-        try (BufferedReader file = new BufferedReader(new InputStreamReader(new FileInputStream("roguelike-input.csv"), "UTF-8"))) {
-            String line;
-            matrix = new int[N][M];
-            int i = 0;
-            while ((line = file.readLine()) != null) {
-                int j = 0;
-                String[] parts = line.split(";");
                 for (String p : parts) {
                     if (!p.isEmpty()) {
-                        int value = Integer.parseInt(p.trim());
-                        matrix[i][j++] = value;
+                        data.add(Integer.parseInt(p.trim()));
                     }
                 }
-                i++;
+            }
+            writeMatrix(data);
+        } catch (IOException ex) {
+            System.out.println(ex.getMessage());
+        }
+    }
+
+    private void writeMatrix(List<Integer> data) {
+        matrix = new int[N][M];
+        for (int j = 0; j < N; j++) {
+            for (int i = 0; i < M; i++) {
+                    this.matrix[j][i] = data.getFirst();
+                    data.removeFirst();
+            }
+        }
+    }
+
+    private void writeWinData(String filePath, int[] dist, int[] prev) {
+        try (BufferedWriter file = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filePath), "UTF-8"))) {
+            int size = N*M;
+            int cur = size - 1;
+            System.out.println(dist[size - 1]);
+            file.write(String.valueOf(dist[size - 1]));
+            file.newLine();
+            while (cur != 0) {
+                int p = prev[cur];
+                if (p == cur - 1) {
+                    System.out.print("D");
+                    file.write("D");
+                } else if (p == cur - M) {
+                    System.out.print("R");
+                    file.write("R");
+                }
+                cur = p;
             }
         } catch (IOException ex) {
             System.out.println(ex.getMessage());
         }
+    }
 
-        AntiBellmanFord(matrix, N, M);
+    private static void writeByConsole(int[] dist, int[] prev, int M, int N) {
+        int size = N * M;
+        int cur = size - 1;
+        System.out.println(dist[size - 1]);
+        while (cur != 0) {
+            int p = prev[cur];
+            if (p == cur - 1) {
+                System.out.print("D");
+            } else if (p == cur - M) {
+                System.out.print("R");
+            }
+            cur = p;
+        }
+    }
+
+    public void runByFile(String dataPath, String outputPath) {
+        readFieldData(dataPath);
+        AntiBellmanFord(matrix, N, M, true);
+        writeWinData(outputPath, dist, prev);
     }
 
     public static void AntiBellmanFord(final int[][] matrix, int N, int M) {
+        AntiBellmanFord(matrix, N, M, false);
+    }
+    public static void AntiBellmanFord(final int[][] matrix, int N, int M, boolean write) {
         int size = N * M;
         int[] dist = new int[size];
         int[] prev = new int[size];
@@ -73,24 +129,12 @@ public class Bagel {
                 }
             }
         }
-        try (BufferedWriter file = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("roguelike-output.txt"), "UTF-8"))) {
-            int cur = size - 1;
-            System.out.println(dist[size - 1]);
-            file.write(String.valueOf(dist[size - 1]));
-            file.newLine();
-            while (cur != 0) {
-                int p = prev[cur];
-                if (p == cur - 1) {
-                    System.out.print("D");
-                    file.write("D");
-                } else if (p == cur - M) {
-                    System.out.print("R");
-                    file.write("R");
-                }
-                cur = p;
-            }
-        } catch (IOException ex) {
-            System.out.println(ex.getMessage());
+
+        if(write) {
+            Bagel.dist = dist;
+            Bagel.prev = prev;
+        } else {
+            writeByConsole(dist, prev, M, N);
         }
     }
 }
