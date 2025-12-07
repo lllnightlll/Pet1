@@ -8,11 +8,10 @@ public class Bagel {
     private int[][] matrix;
     private int N = 0;
     private int M = 0;
-    private static int[] dist;
-    private static int[] prev;
+    private String way;
 
     public Bagel(int[][] matrix, int n, int m) {
-        AntiBellmanFord(matrix, n, m, false);
+        runByInlineData(matrix, n, m);
     }
 
     public Bagel(String dataPath, String outputPath) {
@@ -24,7 +23,7 @@ public class Bagel {
             String line;
             List<Integer> data = new ArrayList<>();
             while ((line = file.readLine()) != null) {
-                String[] parts= line.split(";");
+                String[] parts = line.split(";");
                 M = parts.length;
                 N++;
                 for (String p : parts) {
@@ -43,60 +42,55 @@ public class Bagel {
         matrix = new int[N][M];
         for (int j = 0; j < N; j++) {
             for (int i = 0; i < M; i++) {
-                    this.matrix[j][i] = data.getFirst();
-                    data.removeFirst();
+                this.matrix[j][i] = data.getFirst();
+                data.removeFirst();
             }
         }
     }
 
-    private void writeWinData(String filePath, int[] dist, int[] prev) {
+    private void writeToFile(String filePath, String way) {
         try (BufferedWriter file = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filePath), "UTF-8"))) {
-            int size = N*M;
-            int cur = size - 1;
-            System.out.println(dist[size - 1]);
-            file.write(String.valueOf(dist[size - 1]));
+            file.write(way.length());
             file.newLine();
-            while (cur != 0) {
-                int p = prev[cur];
-                if (p == cur - 1) {
-                    System.out.print("D");
-                    file.write("D");
-                } else if (p == cur - M) {
-                    System.out.print("R");
-                    file.write("R");
-                }
-                cur = p;
-            }
+            file.write(way);
         } catch (IOException ex) {
             System.out.println(ex.getMessage());
         }
     }
 
-    private static void writeByConsole(int[] dist, int[] prev, int M, int N) {
+    private static void writeToConsole(String way) {
+        System.out.println(way);
+    }
+
+    private String recreatePath(int[] prev, int M, int N) {
         int size = N * M;
         int cur = size - 1;
-        System.out.println(dist[size - 1]);
+
+        StringBuilder stringBuilder = new StringBuilder();
         while (cur != 0) {
             int p = prev[cur];
             if (p == cur - 1) {
-                System.out.print("D");
+                stringBuilder.append('D');
             } else if (p == cur - M) {
-                System.out.print("R");
+                stringBuilder.append('R');
             }
             cur = p;
         }
+        return stringBuilder.toString();
     }
 
     public void runByFile(String dataPath, String outputPath) {
         readFieldData(dataPath);
-        AntiBellmanFord(matrix, N, M, true);
-        writeWinData(outputPath, dist, prev);
+        antiBellmanFord(matrix, N, M);
+        writeToFile(outputPath, way);
     }
 
-    public static void AntiBellmanFord(final int[][] matrix, int N, int M) {
-        AntiBellmanFord(matrix, N, M, false);
+    public void runByInlineData(final int[][] matrix, int n, int m) {
+        antiBellmanFord(matrix, n, m);
+        writeToConsole(way);
     }
-    public static void AntiBellmanFord(final int[][] matrix, int N, int M, boolean write) {
+
+    private void antiBellmanFord(final int[][] matrix, int N, int M) {
         int size = N * M;
         int[] dist = new int[size];
         int[] prev = new int[size];
@@ -129,12 +123,6 @@ public class Bagel {
                 }
             }
         }
-
-        if(write) {
-            Bagel.dist = dist;
-            Bagel.prev = prev;
-        } else {
-            writeByConsole(dist, prev, M, N);
-        }
+        this.way = recreatePath(prev, M, N);
     }
 }

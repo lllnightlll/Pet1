@@ -8,6 +8,10 @@ public class NVP {
     private static int[] data;
     private static int j;
 
+    public NVP (int[] x) {
+        nvp(x.length, x);
+    }
+
     public NVP(String inputFile, String outputFile) {
         writeByData(inputFile, outputFile);
     }
@@ -20,21 +24,14 @@ public class NVP {
 
     private void readFile(String inputFile) {
         try (BufferedReader file = new BufferedReader(new InputStreamReader(new FileInputStream(inputFile), "UTF-8"))) {
-            String line;
-            int i = 0;
-            while ((line = file.readLine()) != null) {
-                if (i == 0) {
-                    this.n = Integer.parseInt(line);
-                    this.x = new int[n];
-                    i++;
-                } else {
-                    String[] parts = line.split(" ");
-                    int j = 0;
-                    for (String p : parts) {
-                        if (!p.isEmpty()) {
-                            this.x[j++] = Integer.parseInt(p.trim());
-                        }
-                    }
+            this.n = Integer.parseInt(file.readLine());
+            this.x = new int[n];
+
+            String[] parts = file.readLine().split(" ");
+            int j = 0;
+            for (String p : parts) {
+                if (!p.isEmpty()) {
+                    this.x[j++] = Integer.parseInt(p.trim());
                 }
             }
         } catch (IOException ex) {
@@ -54,7 +51,7 @@ public class NVP {
         }
     }
 
-    private static void writeByConsole(int j, int[] x) {
+    private static void writeByConsole(int j, int[] data) {
         System.out.println(j);
         for (int i = j - 1; i > -1; i--) {
             System.out.printf(data[i] + " ");
