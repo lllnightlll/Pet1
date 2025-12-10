@@ -1,6 +1,7 @@
 package org.example.Hash;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 public class HashMapImpl<V> implements HashMap<String, V> {
@@ -16,7 +17,11 @@ public class HashMapImpl<V> implements HashMap<String, V> {
             this.KEY = KEY;
             this.VALUE = VALUE;
         }
-        String getKEY() { return  KEY;}
+
+        String getKEY() {
+            return KEY;
+        }
+
         V getVALUE() {
             return VALUE;
         }
@@ -40,28 +45,38 @@ public class HashMapImpl<V> implements HashMap<String, V> {
     public void put(String key, V value) {
         int hash = hashByString(key);
         if (this.map[hash] == null) {
-            this.map[hash] = new ArrayList<>();
+            this.map[hash] = new LinkedList<>();
         }
-        this.map[hash].addFirst(new MAP<V>(key, value));
+        for (int i = 0; i < this.map[hash].size(); i++) {
+            if (this.map[hash].get(i).getKEY().equals(key)) {
+                this.map[hash].set(i, new MAP<>(key, value));
+                return;
+            }
+        }
+        this.map[hash].addFirst(new MAP<>(key, value));
     }
 
     @Override
     public V getValue(String key) {
         int hash = hashByString(key);
-        if(this.map[hash] != null)
-            for(int i = 0; i < this.map[hash].size(); i++) {
-                if(this.map[hash].get(i).getKEY().equals(key))
-                    return this.map[hash].get(i).getVALUE(); }
+        if (this.map[hash] != null)
+            for (int i = 0; i < this.map[hash].size(); i++) {
+                if (this.map[hash].get(i).getKEY().equals(key))
+                    return this.map[hash].get(i).getVALUE();
+            }
         return null;
     }
 
     @Override
     public V delete(String key) {
         int hash = hashByString(key);
-        if(this.map[hash] != null)
-            for(int i = 0; i < this.map[hash].size(); i++) {
-                if(this.map[hash].get(i).getKEY().equals(key))
-                    this.map[hash].remove(i); i--; }
+        if (this.map[hash] != null)
+            for (int i = 0; i < this.map[hash].size(); i++) {
+                if (this.map[hash].get(i).getKEY().equals(key)) {
+                    this.map[hash].remove(i);
+                    break;
+                }
+            }
         return null;
     }
 }

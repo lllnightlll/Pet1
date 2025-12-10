@@ -41,7 +41,7 @@ public class NOP {
     }
 
     public static int nop(char[] x, char[] y) {
-        int z = 0;
+        int maxLength = 0;
         for (int k = 0; k < x.length; k++) {
             int j = k;
             int sum = 0;
@@ -50,14 +50,14 @@ public class NOP {
                     j++;
                     sum++;
                 } else {
-                    if (z < sum) {
-                        z = sum;
+                    if (maxLength < sum) {
+                        maxLength = sum;
                     }
                     j = k;
                     sum = 0;
                 }
             }
         }
-        return z;
+        return maxLength;
     }
 }
