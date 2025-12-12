@@ -88,12 +88,12 @@ public class Balanced {
         }
 
         private Tree delete(int x) {
-            if (this.x < x) {
+            if (this.x > x) {
                 if (L != null) {
                     L = L.delete(x);
                 }
                 return this;
-            } else if (this.x > x) {
+            } else if (this.x < x) {
                 if (R != null) {
                     R = R.delete(x);
                 }
