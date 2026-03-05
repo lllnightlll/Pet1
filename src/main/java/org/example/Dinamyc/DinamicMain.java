@@ -1,8 +1,11 @@
-import org.example.Dinamyc.Bagel;
-import org.example.Dinamyc.NVP;
-import org.example.Dinamyc.NOP;
+//import org.example.Dinamyc.Bagel;
+//import org.example.Dinamyc.NVP;
+//import org.example.Dinamyc.NOP;
 
-void main() {
+package org.example.Dinamyc;
+
+public class DinamicMain {
+    void main() {
 //    int[][] x = { {0, 1, 1, 0}, {0, 0, 2, 3}, {4, -2, 1, -1}, {-3, 8, -6, 0} };
 //    new Bagel(x, 4, 4);
 
@@ -17,3 +20,5 @@ void main() {
 //    NVP x = new NVP("lis-input.txt", "lis-output.txt");
     NOP x = new NOP("lcs-input.txt");
 }
+}
+
