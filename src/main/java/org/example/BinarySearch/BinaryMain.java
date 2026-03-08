@@ -6,8 +6,8 @@ package org.example.BinarySearch;
 
 public class BinaryMain {
     void main() {
-        Search x = new Search();
-        // Diploms x = new Diploms();
-        // Equation x = new Equation();
+        new Search();
+        // new Diploms();
+        // new Equation();
     }
 }

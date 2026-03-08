@@ -2,8 +2,6 @@ package org.example.minimums;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 class StackTest {
     private final MinStack<Integer> stack = new MinStackImpl();
 

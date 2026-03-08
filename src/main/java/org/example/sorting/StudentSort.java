@@ -1,6 +1,5 @@
 package org.example.sorting;
 
-import java.util.Comparator;
 import java.util.List;
 
 public class StudentSort implements Sorting<Student>{

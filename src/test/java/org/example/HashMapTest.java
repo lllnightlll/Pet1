@@ -4,7 +4,7 @@ import org.example.Hash.HashMapImpl;
 import org.junit.jupiter.api.Test;
 
 public class HashMapTest {
-    private final HashMap x = new HashMapImpl<String>();
+    private final HashMap<String, String> x = new HashMapImpl<String>();
 
     @Test
     void test() {

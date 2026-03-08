@@ -53,7 +53,9 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
                         userStates.put(chatId, "processing");
                         break;
                     case "sort":
-                        lab = new MainSort();
+                        @SuppressWarnings("rawtypes")
+                        Labs sort_lab = new MainSort();
+                        lab = sort_lab;
                         chosenLabs.put(chatId, lab);
                         message(chatId,"please, write number");
                         userStates.put(chatId, "processing");

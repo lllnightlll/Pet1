@@ -38,6 +38,7 @@ public class MainSort<T extends  Comparable<T>> extends Labs {
         return text;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     protected void handleInput(String text, long chatId, Update update) {
         MainSort.Stage stage = userStage.getOrDefault(chatId, MainSort.Stage.WAIT_LAB);
@@ -149,7 +150,7 @@ public class MainSort<T extends  Comparable<T>> extends Labs {
         }
     }
 
-    private <T> String print(List<T> arr) {
+    private <E> String print(List<E> arr) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < arr.size(); i++) {
             sb.append(arr.get(i).toString());

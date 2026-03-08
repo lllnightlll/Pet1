@@ -1,9 +1,9 @@
 package org.example.Hash;
 
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+@SuppressWarnings("unchecked")
 public class HashMapImpl<V> implements HashMap<String, V> {
     private static final int TABLE_SIZE = 300007;
     private static final int A = 31;
