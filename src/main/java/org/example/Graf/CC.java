@@ -8,7 +8,7 @@ public class CC {
     // [ServerResources]
     private class rig {
         private int x, y;
-        private int flag =0; 
+        private int flag = 0;
 
         rig(int x, int y) {
             this.x = x;
@@ -51,7 +51,7 @@ public class CC {
         for (int i = 0; i < n; i++) {
             m[i] = new rig(i, i);
         }
-        
+
         for (int i = n; i < k; i++) {
             int temp1 = in.nextInt();
             if (temp1 < 0) {
@@ -68,13 +68,14 @@ public class CC {
 
     private void searchComponents() {
         for (int i = 0; i < k; i++) {
-            if(m[i].seeFlag() == 1) continue;
+            if (m[i].seeFlag() == 1)
+                continue;
             HashSet<Integer> x = new HashSet<>();
             x.add(m[i].get_x());
             x.add(m[i].get_y());
             for (int j = 0; j < x.size(); j++) {
-                for (int q = i; q < k; q++){
-                    if (x.contains(m[q].get_x())){
+                for (int q = i; q < k; q++) {
+                    if (x.contains(m[q].get_x())) {
                         x.add(m[q].get_y());
                         m[q].setFlag();
                     } else if (x.contains(m[q].get_y())) {
