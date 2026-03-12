@@ -2,9 +2,9 @@ package org.example.Graf;
 
 import java.util.Scanner;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 
+@SuppressWarnings("unchecked")
 public class TS {
     // [ServerResources]
     private class Element {
@@ -19,10 +19,12 @@ public class TS {
             return x;
         }
 
+        @SuppressWarnings("unused")
         boolean get_y() {
             return y;
         }
 
+        @SuppressWarnings("unused")
         void setFlag() {
             y = true;
         }
