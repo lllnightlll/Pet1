@@ -6,16 +6,22 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.*;
-import static com.raylib.Colors.*;
-import static com.raylib.Raylib.*;
+import java.util.Scanner;
+import java.util.concurrent.*;
 
+//import com.raylib.Colors;
+//import com.raylib.jextract.raylib_h;
+
+//import static com.raylib.Colors.*;
+import static com.raylib.Raylib.*;
+import static com.raylib.Helpers.*;
 
 public class DarkNet {
     static final int CANVAS_WIDTH = 1200;
     static final int CANVAS_HEIGHT = 800;
+    static final private Scanner in = new Scanner(System.in);
 
-    private static class Node {
+    public static class Node {
         long id;
         double lon;
         double lat;
@@ -30,7 +36,7 @@ public class DarkNet {
         }
     };
 
-    private static class Edge {
+    public static class Edge {
         long u;
         long v;
 
@@ -132,31 +138,105 @@ public class DarkNet {
                 edge.dist = (long) euclideanDist(edge.ux, edge.uy, edge.vx, edge.vy);
             }
 
+            System.out.println("What is your favourite NarkoShop? Kraken or Mega?");
+            String x = (in.nextLine()).toUpperCase();
+            for (int i = 0; i < 10; i++) {
+                System.out.print(".");
+                TimeUnit.MILLISECONDS.sleep(100);
+            }
+            System.out.println();
+            while (!(x.equals("KRAKEN") || x.equals("MEGA"))) {
+                System.out.println("You wrote a wrong NarkoShop...\nWrite again:");
+                x = (in.nextLine()).toUpperCase();
+                for (int i = 0; i < 10; i++) {
+                    System.out.print(".");
+                    TimeUnit.MILLISECONDS.sleep(100);
+                }
+                System.out.println();
+            }
+            if (x.equals("KRAKEN") || x.equals("MEGA")) {
+                System.out.println("CORRECT!");
+            }
             InitWindow(CANVAS_WIDTH, CANVAS_HEIGHT, "OMSK");
-            SetTargetFPS(60);
+            SetTargetFPS(144);
+            System.out.println("Write cords: ");
 
             while (!WindowShouldClose()) {
                 BeginDrawing();
-                ClearBackground(RAYWHITE);
+                ClearBackground(newColor(30, 30, 30, 255));
 
                 for (Node node : nodes) {
-                    DrawCircle((int) node.x, (int) node.y, 2, RED);
+                    DrawCircle((int) node.x, (int) node.y, 1, newColor(104, 124, 124, 255));
                 }
 
                 for (Edge edge : edges) {
                     DrawLine(
-                        (int) edge.ux, (int) edge.uy,
-                        (int) edge.vx, (int) edge.vy,
-                        BLACK
-                    );
+                            (int) edge.ux, (int) edge.uy,
+                            (int) edge.vx, (int) edge.vy,
+                            newColor(91, 126, 119, 32));
+                }
+                EndDrawing();
+
+                long start = in.nextLong();
+                long end = in.nextLong();
+                List<List<DarkNet.Node>> zakladka_map = new ArrayList<>();
+                if ((x.toUpperCase()).equals("KRAKEN")) {
+                    zakladka_map = (new Kraken()).dijkstraPath(nodes, edges, nodeIdToPos, start, end);
+                } else if ((x.toUpperCase()).equals("MEGA")) {
+                    zakladka_map = (new MEGA()).dijkstraPath(nodes, edges, nodeIdToPos, start, end);
                 }
 
-                EndDrawing();
+                if (!zakladka_map.isEmpty()) {
+                    System.out.println("We are search the nearest way...");
+                    List<DarkNet.Node> zakladka = zakladka_map.get(0);
+                    if (zakladka != null && zakladka.size() > 1) {
+                        int z = 0;
+                        for (int i = 0; i < zakladka.size() - 1; i++) {
+                            Node a = zakladka.get(i);
+                            Node b = zakladka.get(i + 1);
+                            if (z == 0) {
+                                BeginDrawing();
+                            } else if (z == 100 || i == zakladka.size() - 2) {
+                                z = -1;
+                                TimeUnit.MILLISECONDS.sleep(100);
+                                EndDrawing();
+                                System.out.println("PLease wait few second...");
+                            }
+                            DrawLine((int) a.x, (int) a.y, (int) b.x, (int) b.y, newColor(139, 232, 208, 64));
+                            z++;
+                        }
+                    }
+                    System.out.println("The shortest path was found...");
+                    TimeUnit.SECONDS.sleep(1);
+                    zakladka = zakladka_map.get(1);
+                    if (zakladka != null && zakladka.size() > 1) {
+                        for (int i = 0; i < zakladka.size() - 1; i++) {
+                            Node a = zakladka.get(i);
+                            Node b = zakladka.get(i + 1);
+                            BeginDrawing();
+                            DrawLine((int) a.x, (int) a.y, (int) b.x, (int) b.y, newColor(121, 250, 242, 255));
+                            EndDrawing();
+                            if (i == zakladka.size() - 2) {
+                                if ((x.toUpperCase()).equals("MEGA")) {
+                                    i = 0;
+                                } else {
+                                    while (true) {
+                                        TimeUnit.MILLISECONDS.sleep(100);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    System.out.println("We have error...\nTry again:");
+                }
             }
             CloseWindow();
         } catch (IOException e) {
             System.err.println("Ошибка чтения CSV: " + e.getMessage());
             e.printStackTrace();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 }

@@ -92,9 +92,9 @@
         </dependency>
 
         <dependency>
-        <groupId>io.github.electronstudio</groupId>
-        <artifactId>jaylib-ffm</artifactId>
-        <version>5.5.0-2</version>
-    </dependency>
+            <groupId>io.github.electronstudio</groupId>
+            <artifactId>jaylib-ffm</artifactId>
+            <version>5.5.0-2</version>
+        </dependency>
     </dependencies>
 </project>
