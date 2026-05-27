@@ -53,13 +53,13 @@
         <dependency>
             <groupId>org.telegram</groupId>
             <artifactId>telegrambots-longpolling</artifactId>
-            <version>9.4.0</version>
+            <version>9.6.0</version>
         </dependency>
 
         <dependency>
             <groupId>org.telegram</groupId>
             <artifactId>telegrambots-meta</artifactId>
-            <version>9.4.0</version>
+            <version>9.6.0</version>
         </dependency>
 
         <dependency>
@@ -71,12 +71,12 @@
         <dependency>
             <groupId>org.telegram</groupId>
             <artifactId>telegrambots-client</artifactId>
-            <version>9.4.0</version>
+            <version>9.6.0</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>6.1.0-M1</version>
+            <version>6.1.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -87,7 +87,7 @@
         <dependency>
             <groupId>uk.co.electronstudio.jaylib</groupId>
             <artifactId>jaylib</artifactId>
-            <version>5.5.0-2</version>
+            <version>6.0.1-0</version>
             <scope>compile</scope>
         </dependency>
 
@@ -96,5 +96,22 @@
             <artifactId>jaylib-ffm</artifactId>
             <version>5.5.0-2</version>
         </dependency>
+
+        <dependency>
+          <groupId>com.badlogicgames.gdx</groupId>
+          <artifactId>gdx</artifactId>
+          <version>1.14.1</version>
+      </dependency>
+        <dependency>
+          <groupId>com.badlogicgames.gdx</groupId>
+          <artifactId>gdx-backend-lwjgl3</artifactId>
+          <version>1.14.1</version>
+      </dependency>
+      <dependency>
+          <groupId>com.badlogicgames.gdx</groupId>
+          <artifactId>gdx-platform</artifactId>
+          <version>1.14.1</version>
+          <classifier>natives-desktop</classifier>
+      </dependency>
     </dependencies>
 </project>
