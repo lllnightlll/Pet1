@@ -6,54 +6,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.PriorityQueue;
 
-public class Kraken {
+import org.example.DarkNet.Data.Edge;
+import org.example.DarkNet.Data.Node;
+import org.example.DarkNet.Data.Adj;
+import org.example.DarkNet.Data.State;
+import org.example.DarkNet.Data.Logic;
 
-    double[] dist;
-    int[] parent;
-    List<DarkNet.Node> search = new ArrayList<>();
-    boolean found = false;
+public class Kraken implements Logic {
+    protected double[] dist;
+    protected int[] parent;
+    protected List<Node> search = new ArrayList<>();
+    protected boolean found = false;
 
-    protected static class Adj {
-        int to;
-        double w;
-
-        Adj(int to, double w) {
-            this.to = to;
-            this.w = w;
-        }
-    }
-
-    protected static class State implements Comparable<State> {
-        int v;
-        double dist;
-        double h;
-
-        State(int v, double dist) {
-            this.v = v;
-            this.dist = dist;
-            this.h = 0.0;
-        }
-
-        State(int v, double dist, double h) {
-            this.v = v;
-            this.dist = dist;
-            this.h = h;
-        }
-
-        double f() {
-            return dist + h;
-        }
-
-        public int compareTo(State o) {
-            return Double.compare(this.dist, o.dist);
-        }
-    }
-
-    protected static List<List<Adj>> setAdj(List<List<Adj>> adj, int n, List<DarkNet.Edge> edges,
+    protected static List<List<Adj>> setAdj(List<List<Adj>> adj, int n, List<Edge> edges,
             HashMap<Long, Integer> nodeIdToPos) {
-        for (DarkNet.Edge e : edges) {
-            Integer iu = nodeIdToPos.get(e.u);
-            Integer iv = nodeIdToPos.get(e.v);
+        for (Edge e : edges) {
+            Integer iu = nodeIdToPos.get(e.getU());
+            Integer iv = nodeIdToPos.get(e.getV());
 
             if (iu == null || iv == null)
                 continue;
@@ -65,29 +34,31 @@ public class Kraken {
         return adj;
     }
 
-    protected State addPq(Integer start, List<DarkNet.Node> nodes, Integer target) {
+    @Override
+    public State addPq(Integer start, List<Node> nodes, Integer target) {
         return new State(start, 0.0);
     }
 
-    protected PriorityQueue<State> searchPath(PriorityQueue<State> pq, List<List<Adj>> adj, List<DarkNet.Node> nodes,
+    @Override
+    public PriorityQueue<State> searchPath(PriorityQueue<State> pq, List<List<Adj>> adj, List<Node> nodes,
             Integer target) {
         while (!pq.isEmpty()) {
             State temp = pq.poll();
-            if (temp.dist > dist[temp.v]) {
+            if (temp.getDist() > dist[temp.getV()]) {
                 continue;
             }
 
-            if (temp.v == target) {
+            if (temp.getV() == target) {
                 found = true;
                 break;
             }
 
-            for (Adj a : adj.get(temp.v)) {
-                if ((dist[temp.v] + a.w) < dist[a.to]) {
-                    dist[a.to] = dist[temp.v] + a.w;
-                    parent[a.to] = temp.v;
-                    pq.add(new State(a.to, dist[temp.v] + a.w));
-                    search.add(nodes.get(a.to));
+            for (Adj a : adj.get(temp.getV())) {
+                if ((dist[temp.getV()] + a.getW()) < dist[a.getTo()]) {
+                    dist[a.getTo()] = dist[temp.getV()] + a.getW();
+                    parent[a.getTo()] = temp.getV();
+                    pq.add(new State(a.getTo(), dist[temp.getV()] + a.getW()));
+                    search.add(nodes.get(a.getTo()));
                 }
             }
         }
@@ -95,9 +66,9 @@ public class Kraken {
         return pq;
     }
 
-    protected List<List<DarkNet.Node>> dijkstraPath(
-            List<DarkNet.Node> nodes,
-            List<DarkNet.Edge> edges,
+    public List<List<Node>> dijkstraPath(
+            List<Node> nodes,
+            List<Edge> edges,
             HashMap<Long, Integer> nodeIdToPos,
             long startId,
             long targetId) {
@@ -131,14 +102,14 @@ public class Kraken {
             return Collections.emptyList();
         }
 
-        List<DarkNet.Node> path = new ArrayList<>();
+        List<Node> path = new ArrayList<>();
         int temp = target;
         while (temp != -1) {
             path.add(nodes.get(temp));
             temp = parent[temp];
         }
         Collections.reverse(path);
-        List<List<DarkNet.Node>> returned = new ArrayList<>();
+        List<List<Node>> returned = new ArrayList<>();
         returned.add(search);
         returned.add(path);
         return returned;
