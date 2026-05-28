@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.example.DarkNet.DarkNet;
+import org.example.DarkNet.Kraken;
+import org.example.DarkNet.MEGA;
 import org.example.DarkNet.Data.Edge;
 import org.example.DarkNet.Data.Node;
 
@@ -18,12 +20,14 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
-import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
 public class LibJDX extends ApplicationAdapter {
@@ -39,12 +43,22 @@ public class LibJDX extends ApplicationAdapter {
     private SpriteBatch batch;
     private Stage stage;
     private Skin skin;
+    private TextField startNodeField;
+    private TextField endNodeField;
+    private TextButton findButton;
+    private Table bottomTable;
 
     private List<Node> nodes;
     private List<Edge> edges;
     private HashMap<Long, Integer> nodeIdToPos;
     private ProductItem selectedProduct;
     private StoreMode selectedStore;
+    private boolean mapDrawing = false;
+    private float graphScale = 0.67f;
+    private float graphOffsetX = 400f;
+    private float graphOffsetY = 200f;
+    private long selectedStartNode = -1;
+    private long selectedEndNode = -1;
 
     private LibJDX(List<Node> nodes, List<Edge> edges, HashMap<Long, Integer> nodeIdToPos) {
         this.nodes = nodes;
@@ -72,7 +86,9 @@ public class LibJDX extends ApplicationAdapter {
         krakenBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                item.mode = StoreMode.KRAKEN;
+                selectedProduct = item;
+                selectedStore = StoreMode.KRAKEN;
+                clearAllProductButtons();
             }
         });
 
@@ -82,7 +98,9 @@ public class LibJDX extends ApplicationAdapter {
         megaBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                item.mode = StoreMode.MEGA;
+                selectedProduct = item;
+                selectedStore = StoreMode.MEGA;
+                clearAllProductButtons();
             }
         });
 
@@ -90,6 +108,48 @@ public class LibJDX extends ApplicationAdapter {
         stage.addActor(megaBtn);
         buttons.add(krakenBtn);
         buttons.add(megaBtn);
+    }
+
+    private void createBottomUI() {
+        bottomTable = new Table();
+        bottomTable.setPosition(1060f, 760f);
+
+        Label startLabel = new Label("Start:", skin);
+        startLabel.setWidth(80f);
+
+        startNodeField = new TextField("", skin);
+        startNodeField.setWidth(120f);
+        startNodeField.setMessageText("Node ID");
+
+        Label endLabel = new Label("End:", skin);
+        endLabel.setWidth(80f);
+
+        endNodeField = new TextField("", skin);
+        endNodeField.setWidth(120f);
+        endNodeField.setMessageText("Node ID");
+
+        findButton = new TextButton("Build", skin);
+
+        findButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                try {
+                    selectedStartNode = startNodeField.getText().equals("") ? Long.parseLong(startNodeField.getText()) : -1;
+                    selectedEndNode = startNodeField.getText().equals("") ? Long.parseLong(endNodeField.getText()) : -1;
+                    findPath();
+                } catch (NumberFormatException e) {
+                    throw e;
+                }
+            }
+        });
+
+        bottomTable.add(startLabel);
+        bottomTable.add(startNodeField);
+        bottomTable.add(endLabel);
+        bottomTable.add(endNodeField);
+        bottomTable.add(findButton);
+
+        stage.addActor(bottomTable);
     }
 
     private void initProducts() {
@@ -103,6 +163,26 @@ public class LibJDX extends ApplicationAdapter {
         for (ProductItem item : products) {
             createProductButtons(item);
         }
+    }
+
+    private void clearAllProductButtons() {
+        stage.getRoot().clearChildren();
+        background = new Texture(Gdx.files.internal(Assets.MAP_PNG));
+        mapDrawing = !mapDrawing;
+        createBottomUI();
+    }
+
+    private float tx(double x) {
+        return graphOffsetX + ((float) x) * graphScale;
+    }
+
+    private float ty(double y) {
+        return graphOffsetY + ((float) y) * graphScale;
+    }
+
+    private void findPath() {
+        List<List<Node>> zakladka_map = new ArrayList<>();
+        zakladka_map = selectedStore == StoreMode.KRAKEN ? (new Kraken()).dijkstraPath(nodes, edges, nodeIdToPos, selectedStartNode, selectedEndNode) : (new MEGA()).dijkstraPath(nodes, edges, nodeIdToPos, selectedStartNode, selectedEndNode);
     }
 
     @Override
@@ -125,11 +205,29 @@ public class LibJDX extends ApplicationAdapter {
         ScreenUtils.clear(0f, 0f, 0f, 1f);
 
         viewport.apply();
-        batch.setProjectionMatrix(camera.combined);
 
+        batch.setProjectionMatrix(camera.combined);
         batch.begin();
         batch.draw(background, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         batch.end();
+
+        if (mapDrawing) {
+            shape.setProjectionMatrix(camera.combined);
+
+            shape.begin(ShapeRenderer.ShapeType.Line);
+            shape.setColor(91f / 255f, 126f / 255f, 119f / 255f, 32f / 255f);
+            for (Edge edge : edges) {
+                shape.rectLine(tx(edge.ux), ty(edge.uy), tx(edge.vx), ty(edge.vy), 0f);
+            }
+            shape.end();
+
+            shape.begin(ShapeRenderer.ShapeType.Filled);
+            shape.setColor(104f / 255f, 124f / 255f, 124f / 255f, 1f);
+            for (Node node : nodes) {
+                shape.circle(tx(node.x), ty(node.y), 1f / graphScale);
+            }
+            shape.end();
+        }
 
         stage.act(Gdx.graphics.getDeltaTime());
         stage.draw();
@@ -138,6 +236,8 @@ public class LibJDX extends ApplicationAdapter {
     @Override
     public void resize(int width, int height) {
         viewport.update(width, height, true);
+        shape.setProjectionMatrix(camera.combined);
+        batch.setProjectionMatrix(camera.combined);
     }
 
     @Override

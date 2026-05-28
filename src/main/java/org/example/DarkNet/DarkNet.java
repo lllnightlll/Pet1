@@ -38,7 +38,8 @@ public class DarkNet {
         if (x.equals("YES")) {
             
         } else {
-            RayLib.draw(nodes, edges, nodeIdToPos);
+            
         }*/LibJDX.initLibJDX(nodes, edges, nodeIdToPos);
+    RayLib.draw(nodes, edges, nodeIdToPos);
     }
 }
