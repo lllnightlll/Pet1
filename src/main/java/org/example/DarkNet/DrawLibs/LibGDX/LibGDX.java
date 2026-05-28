@@ -1,4 +1,4 @@
-package org.example.DarkNet.DrawLibs.LibJDX;
+package org.example.DarkNet.DrawLibs.LibGDX;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,13 +13,18 @@ import org.example.DarkNet.Data.Node;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.InputMultiplexer;
+import com.badlogic.gdx.InputProcessor;
+import com.badlogic.gdx.Input.Buttons;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
@@ -27,11 +32,12 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
-public class LibJDX extends ApplicationAdapter {
+public class LibGDX extends ApplicationAdapter {
     private static final float WORLD_WIDTH = 1920f;
     private static final float WORLD_HEIGHT = 1080f;
     private static final List<ProductItem> products = new ArrayList<>();
@@ -48,6 +54,9 @@ public class LibJDX extends ApplicationAdapter {
     private TextField endNodeField;
     private TextButton findButton;
     private Table bottomTable;
+    private InputMultiplexer inputMultiplexer;
+    private MapInputProcessor mapInputProcessor;
+    private TextField activeField = null;
 
     private List<Node> nodes;
     private List<Edge> edges;
@@ -67,19 +76,101 @@ public class LibJDX extends ApplicationAdapter {
     private int pathSegmentsPerFrame = 5;
     private boolean endStepDraw = false;
 
-    private LibJDX(List<Node> nodes, List<Edge> edges, HashMap<Long, Integer> nodeIdToPos) {
+    private LibGDX(List<Node> nodes, List<Edge> edges, HashMap<Long, Integer> nodeIdToPos) {
         this.nodes = nodes;
         this.edges = edges;
         this.nodeIdToPos = nodeIdToPos;
     }
 
-    public static void initLibJDX(List<Node> nodes, List<Edge> edges, HashMap<Long, Integer> nodeIdToPos) {
+    public static void initLibGDX(List<Node> nodes, List<Edge> edges, HashMap<Long, Integer> nodeIdToPos) {
         Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
         config.setTitle(Assets.WINDOW_TITLE);
         config.setWindowedMode((int) WORLD_WIDTH, (int) WORLD_HEIGHT);
         config.setResizable(false);
         config.setWindowPosition(100, 100);
-        new Lwjgl3Application(new LibJDX(nodes, edges, nodeIdToPos), config);
+        new Lwjgl3Application(new LibGDX(nodes, edges, nodeIdToPos), config);
+    }
+
+    class MapInputProcessor implements InputProcessor {
+        @Override
+        public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+            if (button != Buttons.LEFT)
+                return false;
+
+            if (activeField == null) {
+                return false;
+            }
+
+            float worldX = screenX;
+            float worldY = Gdx.graphics.getHeight() - screenY;
+
+            Node nearest = findNearestNode(worldX, worldY);
+            if (nearest != null) {
+                activeField.setText(String.valueOf(nearest.getId()));
+                stage.setKeyboardFocus(null);
+            }
+
+            return false;
+        }
+
+        @Override
+        public boolean keyDown(int keycode) {
+            return false;
+        }
+
+        @Override
+        public boolean keyUp(int keycode) {
+            return false;
+        }
+
+        @Override
+        public boolean keyTyped(char character) {
+            return false;
+        }
+
+        @Override
+        public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+            return false;
+        }
+
+        @Override
+        public boolean touchCancelled(int screenX, int screenY, int pointer, int button) {
+            return false;
+        }
+
+        @Override
+        public boolean touchDragged(int screenX, int screenY, int pointer) {
+            return false;
+        }
+
+        @Override
+        public boolean mouseMoved(int screenX, int screenY) {
+            return false;
+        }
+
+        @Override
+        public boolean scrolled(float amountX, float amountY) {
+            return false;
+        }
+    }
+
+    private Node findNearestNode(float sx, float sy) {
+        Node nearest = null;
+        float minDist = Float.MAX_VALUE;
+
+        for (Node node : nodes) {
+            float nx = tx(node.x);
+            float ny = ty(node.y);
+            float dx = nx - sx;
+            float dy = ny - sy;
+            float dist = dx * dx + dy * dy;
+            if (dist < minDist) {
+                minDist = dist;
+                nearest = node;
+            }
+        }
+
+        return nearest;
     }
 
     private void createProductButtons(ProductItem item) {
@@ -127,6 +218,13 @@ public class LibJDX extends ApplicationAdapter {
         startNodeField = new TextField("", skin);
         startNodeField.setWidth(120f);
         startNodeField.setMessageText("Node ID");
+        startNodeField.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                activeField = startNodeField;
+                stage.setKeyboardFocus(startNodeField);
+            }
+        });
 
         Label endLabel = new Label("End:", skin);
         endLabel.setWidth(80f);
@@ -134,6 +232,13 @@ public class LibJDX extends ApplicationAdapter {
         endNodeField = new TextField("", skin);
         endNodeField.setWidth(120f);
         endNodeField.setMessageText("Node ID");
+        endNodeField.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                activeField = endNodeField;
+                stage.setKeyboardFocus(endNodeField);
+            }
+        });
 
         findButton = new TextButton("Build", skin);
 
@@ -188,15 +293,15 @@ public class LibJDX extends ApplicationAdapter {
     }
 
     private void findPath() {
-        List<List<Node>> zakladka_map = new ArrayList<>();
-        zakladka_map = selectedStore == StoreMode.KRAKEN
+        List<List<Node>> zakladka_map = selectedStore == StoreMode.KRAKEN
                 ? (new Kraken()).dijkstraPath(nodes, edges, nodeIdToPos, selectedStartNode, selectedEndNode)
                 : (new MEGA()).dijkstraPath(nodes, edges, nodeIdToPos, selectedStartNode, selectedEndNode);
 
         if (!zakladka_map.isEmpty()) {
             pathDrawing = true;
             path1 = new ArrayList<>();
-            List<Node> zakladka = zakladka_map.get(0);
+            List<Node> zakladka = selectedStore == StoreMode.KRAKEN ? zakladka_map.get(0) : zakladka_map.get(1);
+
             if (zakladka != null && zakladka.size() > 1) {
                 for (int i = 0; i < zakladka.size() - 1; i++) {
                     Node a = zakladka.get(i);
@@ -262,6 +367,12 @@ public class LibJDX extends ApplicationAdapter {
         stage = new Stage(viewport, batch);
         Gdx.input.setInputProcessor(stage);
         skin = new Skin(Gdx.files.internal(Assets.UI_SKIN_JSON));
+
+        mapInputProcessor = new MapInputProcessor();
+        inputMultiplexer = new InputMultiplexer();
+        inputMultiplexer.addProcessor(stage);
+        inputMultiplexer.addProcessor(mapInputProcessor);
+        Gdx.input.setInputProcessor(inputMultiplexer);
 
         initProducts();
     }

@@ -1,4 +1,4 @@
-package org.example.DarkNet.DrawLibs.LibJDX;
+package org.example.DarkNet.DrawLibs.LibGDX;
 
 public class ProductItem {
     public final String name;

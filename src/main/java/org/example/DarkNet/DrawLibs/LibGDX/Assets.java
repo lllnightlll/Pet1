@@ -1,4 +1,4 @@
-package org.example.DarkNet.DrawLibs.LibJDX;
+package org.example.DarkNet.DrawLibs.LibGDX;
 
 /**
  * Пути для {@link com.badlogic.gdx.Gdx#files}.internal() — файлы в {@code src/main/resources/}.

@@ -9,7 +9,7 @@ import org.example.DarkNet.Data.Edge;
 import org.example.DarkNet.Data.Node;
 import org.example.DarkNet.Data.Map;
 import org.example.DarkNet.DrawLibs.RayLib;
-import org.example.DarkNet.DrawLibs.LibJDX.LibJDX;
+import org.example.DarkNet.DrawLibs.LibGDX.LibGDX;
 
 public class DarkNet {
     public static final int CANVAS_WIDTH = 1200;
@@ -39,7 +39,7 @@ public class DarkNet {
             
         } else {
             
-        }*/LibJDX.initLibJDX(nodes, edges, nodeIdToPos);
+        }*/LibGDX.initLibGDX(nodes, edges, nodeIdToPos);
     RayLib.draw(nodes, edges, nodeIdToPos);
     }
 }
