@@ -29,17 +29,16 @@ public class DarkNet {
 
     public static void main(String[] args) {
         initData();
-        /*System.out.println("Do you like java maboy?");
+        System.out.println("Do you like java maboy?");
         String x = (in.nextLine()).toUpperCase();
         while (!(x.equals("YES") || x.equals("NO"))) {
             System.out.println("You wrote a wrong ANSWER...\nWrite again:");
             x = (in.nextLine()).toUpperCase();
         }
         if (x.equals("YES")) {
-            
+            LibGDX.initLibGDX(nodes, edges, nodeIdToPos);
         } else {
-            
-        }*/LibGDX.initLibGDX(nodes, edges, nodeIdToPos);
-    RayLib.draw(nodes, edges, nodeIdToPos);
+            RayLib.draw(nodes, edges, nodeIdToPos);
+        }
     }
 }
