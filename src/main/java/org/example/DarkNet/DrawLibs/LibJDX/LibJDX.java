@@ -3,6 +3,7 @@ package org.example.DarkNet.DrawLibs.LibJDX;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.example.DarkNet.DarkNet;
 import org.example.DarkNet.Kraken;
@@ -54,11 +55,17 @@ public class LibJDX extends ApplicationAdapter {
     private ProductItem selectedProduct;
     private StoreMode selectedStore;
     private boolean mapDrawing = false;
+    private boolean pathDrawing = false;
     private float graphScale = 0.67f;
     private float graphOffsetX = 400f;
     private float graphOffsetY = 200f;
     private long selectedStartNode = -1;
     private long selectedEndNode = -1;
+    private List<List<Node>> path1 = new ArrayList<>();
+    private List<List<Node>> path2 = new ArrayList<>();
+    private int currentPathIndex = 0;
+    private int pathSegmentsPerFrame = 5;
+    private boolean endStepDraw = false;
 
     private LibJDX(List<Node> nodes, List<Edge> edges, HashMap<Long, Integer> nodeIdToPos) {
         this.nodes = nodes;
@@ -134,8 +141,8 @@ public class LibJDX extends ApplicationAdapter {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 try {
-                    selectedStartNode = startNodeField.getText().equals("") ? Long.parseLong(startNodeField.getText()) : -1;
-                    selectedEndNode = startNodeField.getText().equals("") ? Long.parseLong(endNodeField.getText()) : -1;
+                    selectedStartNode = Long.parseLong(startNodeField.getText());
+                    selectedEndNode = Long.parseLong(endNodeField.getText());
                     findPath();
                 } catch (NumberFormatException e) {
                     throw e;
@@ -182,7 +189,66 @@ public class LibJDX extends ApplicationAdapter {
 
     private void findPath() {
         List<List<Node>> zakladka_map = new ArrayList<>();
-        zakladka_map = selectedStore == StoreMode.KRAKEN ? (new Kraken()).dijkstraPath(nodes, edges, nodeIdToPos, selectedStartNode, selectedEndNode) : (new MEGA()).dijkstraPath(nodes, edges, nodeIdToPos, selectedStartNode, selectedEndNode);
+        zakladka_map = selectedStore == StoreMode.KRAKEN
+                ? (new Kraken()).dijkstraPath(nodes, edges, nodeIdToPos, selectedStartNode, selectedEndNode)
+                : (new MEGA()).dijkstraPath(nodes, edges, nodeIdToPos, selectedStartNode, selectedEndNode);
+
+        if (!zakladka_map.isEmpty()) {
+            pathDrawing = true;
+            path1 = new ArrayList<>();
+            List<Node> zakladka = zakladka_map.get(0);
+            if (zakladka != null && zakladka.size() > 1) {
+                for (int i = 0; i < zakladka.size() - 1; i++) {
+                    Node a = zakladka.get(i);
+                    Node b = zakladka.get(i + 1);
+                    List<Node> temp = new ArrayList<>();
+                    temp.add(a);
+                    temp.add(b);
+                    path1.add(temp);
+                }
+            }
+            path2 = new ArrayList<>();
+            zakladka = zakladka_map.get(1);
+            if (zakladka != null && zakladka.size() > 1) {
+                for (int i = 0; i < zakladka.size() - 1; i++) {
+                    Node a = zakladka.get(i);
+                    Node b = zakladka.get(i + 1);
+                    List<Node> temp = new ArrayList<>();
+                    temp.add(a);
+                    temp.add(b);
+                    path2.add(temp);
+                }
+            }
+
+        }
+    }
+
+    private void drawingMapPath(List<List<Node>> path) {
+        shape.begin(ShapeRenderer.ShapeType.Line);
+        shape.setColor(121f / 255f, 250f / 255f, 242f / 255f, 255f / 255f);
+
+        int count = 0;
+        while (currentPathIndex < path.size() && count < pathSegmentsPerFrame) {
+            List<Node> segment = path.get(currentPathIndex);
+            Node a = segment.get(0);
+            Node b = segment.get(1);
+            shape.rectLine(tx(a.x), ty(a.y), tx(b.x), ty(b.y), 3f);
+            currentPathIndex++;
+            count++;
+        }
+
+        if (endStepDraw) {
+            pathSegmentsPerFrame = Integer.MAX_VALUE;
+        } else {
+            pathSegmentsPerFrame = (int) (Math.random() * 5);
+        }
+
+        shape.end();
+
+        if (currentPathIndex >= path.size()) {
+            currentPathIndex = 0;
+            endStepDraw = true;
+        }
     }
 
     @Override
@@ -227,6 +293,14 @@ public class LibJDX extends ApplicationAdapter {
                 shape.circle(tx(node.x), ty(node.y), 1f / graphScale);
             }
             shape.end();
+
+            if (pathDrawing && !path1.isEmpty() && !path2.isEmpty()) {
+                if (!endStepDraw) {
+                    drawingMapPath(path1);
+                } else {
+                    drawingMapPath(path2);
+                }
+            }
         }
 
         stage.act(Gdx.graphics.getDeltaTime());
