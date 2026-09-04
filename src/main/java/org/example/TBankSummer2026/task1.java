@@ -4,6 +4,7 @@ import java.util.Scanner;
 
 public class task1 {
     public static void main(String[] args) {
+        @SuppressWarnings("resource")
         Scanner in = new Scanner(System.in);
         int n = in.nextInt();
         int[] a = new int[n];
