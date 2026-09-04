@@ -64,7 +64,7 @@ public class NVP {
     public static void nvp(int n, int[] x, boolean f) {
         int pos = 0;
         int[] data = new int[n];
-        for (int i = 0; i < n; i++) {
+        /*for (int i = 0; i < n; i++) {
             int sum = 1;
             int k = i;
             for (int j = i; j < n; j++) {
@@ -74,7 +74,7 @@ public class NVP {
                     data[i] = sum;
                 }
             }
-        }
+        }*/
         int k = n - 1;
         int j = 1;
         data[0] = x[k];
