@@ -1,0 +1,9 @@
+name: llm
+channels:
+  - defaults
+dependencies:
+  - python=3.13
+  - pandas=2.3
+  - numpy=2.3
+  - notebook=7.4
+  - jupyter=1.1
