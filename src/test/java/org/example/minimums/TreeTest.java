@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import org.example.Java.minimums.PriorityQueue;
+import org.example.Java.minimums.PriorityQueueImpl;
+
 public class TreeTest {
     private final PriorityQueue<Integer> tree = new PriorityQueueImpl(100000);
 

@@ -1,5 +1,7 @@
 package org.example.sorting;
 
+import org.example.Java.sorting.InsertionSort;
+import org.example.Java.sorting.Sorting;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

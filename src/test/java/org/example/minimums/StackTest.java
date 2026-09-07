@@ -1,5 +1,7 @@
 package org.example.minimums;
 
+import org.example.Java.minimums.MinStack;
+import org.example.Java.minimums.MinStackImpl;
 import org.junit.jupiter.api.Test;
 
 class StackTest {

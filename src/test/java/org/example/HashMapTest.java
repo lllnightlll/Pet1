@@ -1,6 +1,6 @@
 package org.example;
-import org.example.Hash.HashMap;
-import org.example.Hash.HashMapImpl;
+import org.example.Java.Hash.HashMap;
+import org.example.Java.Hash.HashMapImpl;
 import org.junit.jupiter.api.Test;
 
 public class HashMapTest {
