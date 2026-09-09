@@ -1,14 +1,130 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru" class="light">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Моё первое PWA</title>
+  <title>Fucking Mobile Development</title>
   <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Pacifico&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
 </head>
+
 <body>
-  <h1>Привет, мобильный мир!</h1>
-  <p>Это приложение работает офлайн.</p>
+
+  <div class="page">
+
+    <header class="header">
+      <h1 class="brand">† altushka pwa †</h1>
+      <button id="themeBtn" type="button" class="theme-btn" onclick="toggleTheme()">☀ day</button>
+    </header>
+
+    <section class="card">
+      <p class="card-title">hello fucking world!</p>
+      <p class="card-meta">
+        <span id="dateDisplay"></span>
+        · <span id="pageOpenDisplay"></span>
+      </p>
+      <p class="card-text">
+        lllnightlll from omsk say "I don't smoke for myself, I smoke only for my Dod Shiva, this is not smoking, it's a prayer"
+      </p>
+    </section>
+
+    <section class="card">
+      <h2 class="section-label">stack</h2>
+      <ul class="stack-list">
+        <li>kotlin</li>
+        <li>ktor</li>
+        <li>jetpack compose</li>
+      </ul>
+    </section>
+
+    <button id="counterBtn" type="button" class="counter-btn">People died ❤️: 0</button>
+
+    <section class="card">
+      <h2 class="death-title">DeathNote</h2>
+      <div class="note-row">
+        <input type="text" id="noteInput" class="note-input" placeholder="write name for kill after 40s">
+        <button type="button" class="kill-btn" onclick="saveNote()">kill</button>
+      </div>
+      <p id="savedNote" class="saved-note"></p>
+    </section>
+
+  </div>
+
+  <script>
+    let isDark = localStorage.getItem('theme') === 'dark';
+
+    function applyTheme() {
+      const root = document.documentElement;
+      const btn = document.getElementById('themeBtn');
+      if (isDark) {
+        root.classList.add('dark');
+        root.classList.remove('light');
+        btn.textContent = '☾ night';
+      } else {
+        root.classList.remove('dark');
+        root.classList.add('light');
+        btn.textContent = '☀ day';
+      }
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    }
+
+    function toggleTheme() {
+      isDark = !isDark;
+      applyTheme();
+    }
+
+    applyTheme();
+  </script>
+
+  <script>
+    let count_page_open = parseInt(localStorage.getItem('pageOpenCount') || '0', 10);
+    count_page_open++;
+    localStorage.setItem('pageOpenCount', count_page_open);
+    document.getElementById('pageOpenDisplay').textContent = 'page opened: ' + count_page_open;
+  </script>
+
+  <script>
+    function updateDate() {
+      const now = new Date();
+      document.getElementById('dateDisplay').textContent = now.toLocaleString();
+    }
+    updateDate();
+    setInterval(updateDate, 1000);
+  </script>
+
+  <script>
+    let count = 0;
+    document.getElementById('counterBtn').addEventListener('click', function () {
+      count++;
+      this.textContent = 'People killed: ' + count;
+    });
+  </script>
+
+  <script>
+    const noteInput = document.getElementById('noteInput');
+    const savedNote = document.getElementById('savedNote');
+
+    function saveNote() {
+      const text = noteInput.value.trim();
+      if (!text) return;
+      localStorage.setItem('note', text);
+      localStorage.setItem('noteDisplay', text + ' will be killed after 40s');
+      savedNote.textContent = localStorage.getItem('noteDisplay');
+    }
+
+    const saved = localStorage.getItem('note');
+    const savedDisplay = localStorage.getItem('noteDisplay');
+    if (saved) {
+      noteInput.value = saved;
+    }
+    if (savedDisplay) {
+      savedNote.textContent = savedDisplay;
+    }
+  </script>
 
   <script>
     if ('serviceWorker' in navigator) {
@@ -18,4 +134,5 @@
     }
   </script>
 </body>
+
 </html>

@@ -1,0 +1,257 @@
+/* Altushka theme — day / night */
+
+:root,
+html.light {
+  --alt-cream: #fff5f8;
+  --alt-blush: #ffd6e7;
+  --alt-pink: #ff8fab;
+  --alt-rose: #fb6f92;
+  --alt-lilac: #c8b6ff;
+  --alt-lavender: #e0aaff;
+  --alt-night: #1a1025;
+  --alt-plum: #2d1b3d;
+  --alt-ink: #0f0a14;
+  --alt-neon: #ff6ec7;
+  --alt-glow: #b388ff;
+
+  --bg-from: var(--alt-cream);
+  --bg-via: var(--alt-blush);
+  --bg-to: var(--alt-lilac);
+  --text: var(--alt-plum);
+  --accent: var(--alt-rose);
+  --accent-soft: var(--alt-lilac);
+  --card-bg: rgba(255, 255, 255, 0.5);
+  --card-border: rgba(255, 255, 255, 0.6);
+  --chip-bg: rgba(255, 214, 231, 0.6);
+  --btn-from: var(--alt-pink);
+  --btn-to: var(--alt-rose);
+  --btn-text: #ffffff;
+  --theme-btn-bg: rgba(255, 255, 255, 0.7);
+  --theme-btn-border: rgba(251, 111, 146, 0.4);
+  --input-bg: rgba(255, 255, 255, 0.8);
+  --input-border: rgba(251, 111, 146, 0.3);
+  --input-placeholder: rgba(45, 27, 61, 0.4);
+  --muted: rgba(45, 27, 61, 0.7);
+  --shadow: 0 8px 32px rgba(251, 111, 146, 0.25);
+}
+
+html.dark {
+  --bg-from: var(--alt-ink);
+  --bg-via: var(--alt-night);
+  --bg-to: var(--alt-plum);
+  --text: var(--alt-blush);
+  --accent: var(--alt-neon);
+  --accent-soft: var(--alt-glow);
+  --card-bg: rgba(45, 27, 61, 0.4);
+  --card-border: rgba(179, 136, 255, 0.2);
+  --chip-bg: rgba(26, 16, 37, 0.6);
+  --btn-from: var(--alt-neon);
+  --btn-to: var(--alt-glow);
+  --btn-text: var(--alt-ink);
+  --theme-btn-bg: rgba(45, 27, 61, 0.7);
+  --theme-btn-border: rgba(255, 110, 199, 0.4);
+  --input-bg: rgba(26, 16, 37, 0.6);
+  --input-border: rgba(255, 110, 199, 0.3);
+  --input-placeholder: rgba(255, 214, 231, 0.4);
+  --muted: rgba(255, 214, 231, 0.7);
+  --shadow: 0 8px 32px rgba(255, 110, 199, 0.2);
+}
+
+body {
+  font-family: 'Quicksand', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  margin: 0;
+  color: var(--text);
+  background: linear-gradient(to bottom right, var(--bg-from), var(--bg-via), var(--bg-to));
+  transition: color 0.3s, background 0.3s;
+}
+
+.font-display {
+  font-family: 'Pacifico', cursive;
+}
+
+.page {
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.brand {
+  font-family: 'Pacifico', cursive;
+  font-size: 1.875rem;
+  color: var(--accent);
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.08));
+  margin: 0;
+}
+
+.theme-btn {
+  border-radius: 9999px;
+  border: 1px solid var(--theme-btn-border);
+  background: var(--theme-btn-bg);
+  color: var(--accent);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.theme-btn:hover {
+  transform: scale(1.05);
+}
+
+.card {
+  border-radius: 1.5rem;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+}
+
+.card-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.card-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
+.card-text {
+  margin: 1rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  opacity: 0.9;
+}
+
+.section-label {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent-soft);
+}
+
+.stack-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stack-list li {
+  border-radius: 1rem;
+  background: var(--chip-bg);
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+}
+
+.counter-btn {
+  width: 100%;
+  border: none;
+  border-radius: 9999px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: var(--btn-text);
+  background: linear-gradient(to right, var(--btn-from), var(--btn-to));
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.counter-btn:hover {
+  transform: scale(1.02);
+}
+
+.counter-btn:active {
+  transform: scale(0.95);
+}
+
+.death-title {
+  margin: 0;
+  font-family: 'Pacifico', cursive;
+  font-size: 1.5rem;
+  color: var(--accent);
+}
+
+.note-row {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .note-row {
+    flex-direction: row;
+  }
+}
+
+.note-input {
+  flex: 1;
+  border-radius: 1rem;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--text);
+  outline: none;
+}
+
+.note-input::placeholder {
+  color: var(--input-placeholder);
+}
+
+.note-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.kill-btn {
+  border: none;
+  border-radius: 1rem;
+  background: var(--accent);
+  color: var(--btn-text);
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.kill-btn:hover {
+  filter: brightness(1.1);
+}
+
+.saved-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--muted);
+}
