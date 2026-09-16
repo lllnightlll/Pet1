@@ -1,9 +1,11 @@
-const CACHE_NAME = 'v1';
+const CACHE_NAME = 'v7';
 const ASSETS = [
-  './',           // текущая директория (главная страница)
-  './index.html', // файл index.html
-  './styles.css', // тема альтушек
-  './manifest.json' // файл манифеста
+  './',
+  './index.html',
+  './styles.css',
+  './parchment.ttf',
+  './manifest.json',
+  './image.png'
 ];
 
 self.addEventListener('install', event => {
@@ -18,7 +20,11 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(clients.claim());
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
+    ).then(() => clients.claim())
+  );
 });
 
 self.addEventListener('fetch', event => {
