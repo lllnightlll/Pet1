@@ -10,6 +10,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.StringTokenizer;
 import java.util.TreeMap;
 
@@ -35,6 +36,7 @@ public class Basic {
         // FastScanner in = FastScanner.fromFile("input.txt");
         // FastWriter out = FastWriter.fromFile("output.txt");
         // TreeMap<Key, Value> map = new TreeMap<>();
+        // TreeSet<Value> values = new TreeSet<>();
 
         int t = in.nextInt();
         for (int i = 0; i < t; i++) {
@@ -42,6 +44,82 @@ public class Basic {
             out.println(n);
         }
         out.close();
+    }
+
+    private static ArrayList<Integer> buildPrimes(int max) {
+        ArrayList<Integer> primes = new ArrayList<>();
+        for (int j = 2; j <= max; j++) {
+            if (Prime.isPrime(j)) {
+                primes.add(j);
+            }
+        }
+        return primes;
+    }
+
+    static final class Prime {
+        private static final long[] BASES = { 2L, 325L, 9375L, 28178L, 450775L, 9780504L, 1795265022L };
+
+        private Prime() {
+        }
+
+        static boolean isPrime(long n) {
+            if (n < 2) {
+                return false;
+            }
+            if (n <= 3) {
+                return true;
+            }
+            if ((n & 1) == 0 || n % 3 == 0) {
+                return false;
+            }
+            long d = n - 1;
+            int s = 0;
+            while ((d & 1) == 0) {
+                d >>= 1;
+                s++;
+            }
+            for (long base : BASES) {
+                if (base % n == 0) {
+                    continue;
+                }
+                if (!millerRabinWitness(base % n, d, s, n)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static boolean millerRabinWitness(long a, long d, int s, long n) {
+            long x = powMod(a, d, n);
+            if (x == 1 || x == n - 1) {
+                return true;
+            }
+            for (int i = 1; i < s; i++) {
+                x = mulMod(x, x, n);
+                if (x == n - 1) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        static long powMod(long a, long e, long mod) {
+            long result = 1 % mod;
+            a %= mod;
+            while (e > 0) {
+                if ((e & 1) == 1) {
+                    result = mulMod(result, a, mod);
+                }
+                a = mulMod(a, a, mod);
+                e >>= 1;
+            }
+            return result;
+        }
+
+        static long mulMod(long a, long b, long mod) {
+            return java.math.BigInteger.valueOf(a).multiply(java.math.BigInteger.valueOf(b))
+                    .mod(java.math.BigInteger.valueOf(mod)).longValue();
+        }
     }
 
     static final class Const {
