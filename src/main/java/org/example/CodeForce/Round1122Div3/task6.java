@@ -24,10 +24,17 @@ public class task6 {
                 total += y;
             }
 
+            long left = max + 1;
+            long right = max + 60;
             long mexoramax = max;
-            for (long m = max + 1; m <= max + 60; m++) {
-                if (!can(m, set, total)) break;
-                mexoramax = m;
+            while (left <= right) {
+                long mid = left + (right - left) / 2;
+                if (can(mid, set, total)) {
+                    mexoramax = mid;
+                    left = mid + 1;
+                } else {
+                    right = mid - 1;
+                }
             }
             out.append(mexoramax).append('\n');
         }
