@@ -13,6 +13,20 @@ import java.io.PrintWriter;
 import java.util.StringTokenizer;
 import java.util.TreeMap;
 
+/*
+The sause flexing
+No ketchup
+None
+Just sauce
+Saucy
+raw sauce
+Bah
+Yo
+Boom
+Ah
+The thing goes...
+*/
+
 public class Basic {
     public static void main(String[] args) throws IOException {
         FastScanner in = FastScanner.fromStdIn();
