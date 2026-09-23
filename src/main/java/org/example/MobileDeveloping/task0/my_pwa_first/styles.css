@@ -46,6 +46,10 @@ html.light {
   --theme-btn-border: rgba(251, 111, 146, 0.4);
   --muted: rgba(45, 27, 61, 0.7);
   --shadow: 0 8px 32px rgba(251, 111, 146, 0.25);
+  --avatar-bg: rgba(255, 214, 231, 0.85);
+  --profile-btn-from: var(--alt-pink);
+  --profile-btn-to: var(--alt-rose);
+  --profile-btn-text: #ffffff;
 }
 
 html.dark {
@@ -64,6 +68,10 @@ html.dark {
   --theme-btn-border: rgba(255, 110, 199, 0.4);
   --muted: rgba(255, 214, 231, 0.7);
   --shadow: 0 8px 32px rgba(255, 110, 199, 0.2);
+  --avatar-bg: rgba(179, 136, 255, 0.25);
+  --profile-btn-from: var(--alt-neon);
+  --profile-btn-to: var(--alt-glow);
+  --profile-btn-text: var(--alt-ink);
 }
 
 body {
@@ -148,85 +156,131 @@ body {
   transform: translateX(-50%) scale(1.05);
 }
 
-.product-card {
+.profile-card {
   max-width: 22rem;
   margin: 0 auto 1.5rem;
-  border-radius: 1.5rem;
+  padding: 24px;
+  border-radius: 16px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
-  padding: 1.25rem;
   box-shadow: var(--shadow);
   backdrop-filter: blur(8px);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
 }
 
-.product-header {
+.profile-header {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  gap: 1rem;
+  margin-bottom: 24px;
 }
 
-.product-image {
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
   flex-shrink: 0;
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: 1rem;
-  background: var(--chip-bg);
+  font-size: 40px;
+  background: var(--avatar-bg);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 3.5rem;
+  overflow: hidden;
+  transition: background 0.3s;
 }
 
-.product-title {
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.profile-info {
+  flex: 1;
+  margin-left: 16px;
+  min-width: 0;
+}
+
+.profile-name {
   margin: 0;
   font-family: 'Parchment', cursive;
   font-size: 3rem;
   font-weight: normal;
   color: var(--accent);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.product-description {
+.profile-status {
   margin: 0.25rem 0 0;
-  font-size: 1.75rem;
-  line-height: 1.4;
+  font-family: 'Parchment', cursive;
+  font-size: 2rem;
+  font-weight: 500;
   color: var(--muted);
 }
 
-.product-footer {
+.profile-stats {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  justify-content: space-around;
+  margin-bottom: 24px;
 }
 
-.product-price {
+.profile-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.profile-stat-value {
+  font-family: 'Parchment', cursive;
   font-size: 2.5rem;
   font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
 }
 
-.product-button {
+.profile-stat-label {
+  font-family: 'Parchment', cursive;
+  font-size: 2rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: lowercase;
+  margin-top: 0.25rem;
+}
+
+.profile-button {
+  width: 100%;
+  padding: 12px;
   border: none;
-  border-radius: 9999px;
-  padding: 0.625rem 1.25rem;
-  font-size: 1.75rem;
+  border-radius: 8px;
+  font-family: 'Quicksand', sans-serif;
+  font-size: 1.125rem;
   font-weight: 700;
-  font-family: inherit;
-  color: var(--btn-text);
-  background: linear-gradient(to right, var(--btn-from), var(--btn-to));
+  color: var(--profile-btn-text);
+  background: linear-gradient(to right, var(--profile-btn-from), var(--profile-btn-to));
   box-shadow: var(--shadow);
   cursor: pointer;
-  transition: transform 0.15s;
+  transition: transform 0.15s, background 0.3s, color 0.3s;
+  touch-action: manipulation;
 }
 
-.product-button:hover {
-  transform: scale(1.03);
+.profile-button:hover {
+  transform: scale(1.02);
 }
 
-.product-button:active {
-  transform: scale(0.96);
+.profile-button:active {
+  transform: scale(0.97);
+}
+
+.profile-button--following {
+  background: var(--chip-bg);
+  color: var(--text);
+  box-shadow: none;
+  border: 1px solid var(--card-border);
 }
