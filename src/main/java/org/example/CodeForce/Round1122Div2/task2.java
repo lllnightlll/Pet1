@@ -30,6 +30,7 @@ Ah
 The thing goes...
 */
 
+@SuppressWarnings("unused")
 public class task2 {
     public static void main(String[] args) throws IOException {
         FastScanner in = FastScanner.fromStdIn();
@@ -125,6 +126,7 @@ public class task2 {
         }
     }
 
+    @SuppressWarnings("unused")
     private static ArrayList<Integer> buildPrimes(int max) {
         ArrayList<Integer> primes = new ArrayList<>();
         for (int j = 2; j <= max; j++) {

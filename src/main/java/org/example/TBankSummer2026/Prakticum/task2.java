@@ -4,6 +4,7 @@ import java.util.Scanner;
 
 public class task2 {
     public static void main(String[] args) {
+        @SuppressWarnings("resource")
         Scanner in = new Scanner(System.in);
         int t = in.nextInt();
         StringBuilder out = new StringBuilder();

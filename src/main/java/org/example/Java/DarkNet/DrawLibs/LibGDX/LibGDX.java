@@ -58,6 +58,7 @@ public class LibGDX extends ApplicationAdapter {
     private List<Node> nodes;
     private List<Edge> edges;
     private HashMap<Long, Integer> nodeIdToPos;
+    @SuppressWarnings("unused")
     private ProductItem selectedProduct;
     private StoreMode selectedStore;
     private boolean mapDrawing = false;

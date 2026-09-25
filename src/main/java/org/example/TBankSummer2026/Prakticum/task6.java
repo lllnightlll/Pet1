@@ -15,7 +15,9 @@ public class task6 {
     static boolean found;
     static Deque<int[]> stack;
 
+    @SuppressWarnings("unchecked")
     public static void main(String[] args) {
+        @SuppressWarnings("resource")
         Scanner in = new Scanner(System.in);
         int t = in.nextInt();
         StringBuilder out = new StringBuilder();

@@ -29,6 +29,7 @@ Ah
 The thing goes...
 */
 
+@SuppressWarnings("unused")
 public class task1 {
     public static void main(String[] args) throws IOException {
         FastScanner in = FastScanner.fromStdIn();
