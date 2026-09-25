@@ -12,7 +12,9 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.StringTokenizer;
+import java.util.Comparator;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 /*
 The sause flexing
@@ -44,6 +46,23 @@ public class Basic {
             out.println(n);
         }
         out.close();
+    }
+
+    static ArrayList<Integer> uniquePrimeFactors(int x) {
+        ArrayList<Integer> primes = new ArrayList<>();
+        for (int p = 2; (long) p * p <= x; p++) {
+            if (x % p != 0) {
+                continue;
+            }
+            primes.add(p);
+            while (x % p == 0) {
+                x /= p;
+            }
+        }
+        if (x > 1) {
+            primes.add(x);
+        }
+        return primes;
     }
 
     private static ArrayList<Integer> buildPrimes(int max) {
@@ -166,6 +185,36 @@ public class Basic {
          */
         static int mulMod(long a, long b) {
             return (int) ((a * b) % MOD);
+        }
+
+        /**
+         * Наибольший общий делитель (алгоритм Евклида). Работает и для отрицательных:
+         * берём модуль.
+         */
+        static long gcd(long a, long x) {
+            a = Math.abs(a);
+            x = Math.abs(x);
+            while (x != 0) {
+                long next = a % x;
+                a = x;
+                x = next;
+            }
+            return a;
+        }
+
+        static int gcd(int a, int x) {
+            return (int) gcd((long) a, (long) x);
+        }
+
+        /**
+         * Наименьшее общее кратное. Деление идёт до умножения, чтобы реже переполнять
+         * long.
+         */
+        static long lcm(long a, long x) {
+            if (a == 0 || x == 0) {
+                return 0;
+            }
+            return Math.abs(a / gcd(a, x) * x);
         }
     }
 
