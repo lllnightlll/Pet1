@@ -219,6 +219,51 @@ public class Basic {
             }
             return Math.abs(a / gcd(a, x) * x);
         }
+
+        /**
+         * Все целые положительные делители n, по возрастанию.
+         * Для n &lt;= 0 — пустой список. O(sqrt(n)).
+         */
+        static ArrayList<Integer> divisors(int n) {
+            ArrayList<Integer> result = new ArrayList<>();
+            if (n <= 0) {
+                return result;
+            }
+            for (int i = 1; (long) i * i <= n; i++) {
+                if (n % i != 0) {
+                    continue;
+                }
+                result.add(i);
+                int pair = n / i;
+                if (pair != i) {
+                    result.add(pair);
+                }
+            }
+            result.sort(null);
+            return result;
+        }
+
+        /**
+         * Все целые положительные делители n (long), по возрастанию.
+         */
+        static ArrayList<Long> divisors(long n) {
+            ArrayList<Long> result = new ArrayList<>();
+            if (n <= 0) {
+                return result;
+            }
+            for (long i = 1; i <= n / i; i++) {
+                if (n % i != 0) {
+                    continue;
+                }
+                result.add(i);
+                long pair = n / i;
+                if (pair != i) {
+                    result.add(pair);
+                }
+            }
+            result.sort(null);
+            return result;
+        }
     }
 
     static final class BinarySearch {
