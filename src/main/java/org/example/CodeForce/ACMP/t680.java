@@ -1,4 +1,4 @@
-package org.example.CodeForce;
+package org.example.CodeForce.ACMP;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -31,7 +31,7 @@ The thing goes...
 */
 
 @SuppressWarnings("unused")
-public class Basic {
+public class t680 {
     public static void main(String[] args) throws IOException {
         FastScanner in = FastScanner.fromStdIn();
         FastWriter out = FastWriter.fromStdOut();
@@ -42,16 +42,13 @@ public class Basic {
         // TreeSet<Value> values = new TreeSet<>();
 
         int t = in.nextInt();
-        for (int i = 0; i < t; i++) {
-            int n = in.nextInt();
-            out.println(n);
-        }
+        out.println(3L * (1L << (t - 1)));
         out.close();
     }
 
     /**
-     * Простые делители x без повторов, по возрастанию. O(sqrt(x)).
-     * Пример: 12 -> [2, 3],  7 -> [7],  1 -> [].
+     * Простые делители x без повторов, по возрастанию. O(sqrt(x)). Пример: 12 ->
+     * [2, 3], 7 -> [7], 1 -> [].
      */
     @SuppressWarnings("unused")
     private static ArrayList<Integer> uniquePrimeFactors(int x) {
@@ -70,7 +67,6 @@ public class Basic {
         }
         return primes;
     }
-
 
     /**
      * Все простые числа до max без повторов, по возрастанию. O(max / log(max)).
@@ -229,8 +225,8 @@ public class Basic {
         }
 
         /**
-         * Все целые положительные делители n, по возрастанию.
-         * Для n &lt;= 0 — пустой список. O(sqrt(n)).
+         * Все целые положительные делители n, по возрастанию. Для n &lt;= 0 — пустой
+         * список. O(sqrt(n)).
          */
         static ArrayList<Integer> divisors(int n) {
             ArrayList<Integer> result = new ArrayList<>();
