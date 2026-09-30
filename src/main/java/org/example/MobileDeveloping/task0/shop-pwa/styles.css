@@ -1,0 +1,103 @@
+/**
+ * Тема магазина: CSS-переменные светлой и тёмной схем
+ * из my_pwa_first. Каркас экрана задаётся в <style> у index.html.
+ */
+
+@font-face {
+  font-family: 'Parchment';
+  src: url('./parchment.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  color-scheme: light dark;
+}
+
+:root,
+html.light {
+  --font-main: 'Parchment', cursive;
+  --font-emoji: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", 'Parchment', cursive;
+  --type-scale: 3;
+  --emoji-scale: 1;
+  --alt-cream: #fff5f8;
+  --alt-blush: #ffd6e7;
+  --alt-pink: #ff8fab;
+  --alt-rose: #fb6f92;
+  --alt-lilac: #c8b6ff;
+  --alt-night: #1a1025;
+  --alt-plum: #2d1b3d;
+  --alt-ink: #0f0a14;
+  --alt-neon: #ff6ec7;
+  --alt-glow: #b388ff;
+
+  --bg-from: var(--alt-cream);
+  --bg-via: var(--alt-blush);
+  --bg-to: var(--alt-lilac);
+  --text: var(--alt-plum);
+  --accent: var(--alt-rose);
+  --card-bg: rgba(255, 255, 255, 0.5);
+  --card-border: rgba(255, 255, 255, 0.6);
+  --chip-bg: rgba(255, 214, 231, 0.6);
+  --btn-from: var(--alt-pink);
+  --btn-to: var(--alt-rose);
+  --btn-text: #ffffff;
+  --theme-btn-bg: rgba(255, 255, 255, 0.7);
+  --theme-btn-border: rgba(251, 111, 146, 0.4);
+  --muted: rgba(45, 27, 61, 0.7);
+  --shadow: 0 8px 32px rgba(251, 111, 146, 0.25);
+}
+
+html.dark {
+  --bg-from: var(--alt-ink);
+  --bg-via: var(--alt-night);
+  --bg-to: var(--alt-plum);
+  --text: var(--alt-blush);
+  --accent: var(--alt-neon);
+  --card-bg: rgba(45, 27, 61, 0.4);
+  --card-border: rgba(179, 136, 255, 0.2);
+  --chip-bg: rgba(26, 16, 37, 0.6);
+  --btn-from: var(--alt-neon);
+  --btn-to: var(--alt-glow);
+  --btn-text: var(--alt-ink);
+  --theme-btn-bg: rgba(45, 27, 61, 0.7);
+  --theme-btn-border: rgba(255, 110, 199, 0.4);
+  --muted: rgba(255, 214, 231, 0.7);
+  --shadow: 0 8px 32px rgba(255, 110, 199, 0.2);
+}
+
+.theme-toggle {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--theme-btn-border);
+  background: var(--theme-btn-bg);
+  color: var(--accent);
+  padding: 0;
+  font-size: calc(1.25rem * var(--emoji-scale));
+  line-height: 1;
+  font-family: var(--font-emoji);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: transform 0.2s;
+  touch-action: manipulation;
+}
+
+.theme-toggle:hover {
+  transform: scale(1.05);
+}
