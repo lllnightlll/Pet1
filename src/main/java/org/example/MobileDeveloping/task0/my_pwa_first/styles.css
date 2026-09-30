@@ -31,6 +31,10 @@ html.light {
   --alt-neon: #ff6ec7;
   --alt-glow: #b388ff;
 
+  --font-main: 'Parchment', cursive;
+  --font-emoji: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", 'Parchment', cursive;
+  --emoji-scale: 1;
+
   --bg-from: var(--alt-cream);
   --bg-via: var(--alt-blush);
   --bg-to: var(--alt-lilac);
@@ -75,7 +79,7 @@ html.dark {
 }
 
 body {
-  font-family: 'Parchment', 'Quicksand', sans-serif;
+  font-family: var(--font-main);
   font-size: 2rem;
   padding: 16px;
   -webkit-font-smoothing: antialiased;
@@ -107,7 +111,7 @@ body {
 
 .vendor-box legend {
   padding: 0 0.35rem;
-  font-family: 'Quicksand', sans-serif;
+  font-family: var(--font-main);
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -143,7 +147,7 @@ body {
   padding: 0;
   font-size: 1.25rem;
   line-height: 1;
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  font-family: var(--font-emoji);
   box-shadow: var(--shadow);
   backdrop-filter: blur(8px);
   cursor: pointer;
@@ -154,6 +158,36 @@ body {
 
 .theme-toggle:hover {
   transform: translateX(-50%) scale(1.05);
+}
+
+.back-btn {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--theme-btn-border);
+  background: var(--theme-btn-bg);
+  color: var(--accent);
+  padding: 0;
+  font-size: calc(1rem * var(--emoji-scale));
+  line-height: 1;
+  font-family: var(--font-main);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: transform 0.2s;
+  touch-action: manipulation;
+}
+
+.back-btn:hover {
+  transform: scale(1.05);
 }
 
 .profile-card {
@@ -259,7 +293,7 @@ body {
   padding: 12px;
   border: none;
   border-radius: 8px;
-  font-family: 'Quicksand', sans-serif;
+  font-family: var(--font-main);
   font-size: 1.125rem;
   font-weight: 700;
   color: var(--profile-btn-text);

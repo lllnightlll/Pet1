@@ -1,11 +1,15 @@
-const CACHE_NAME = 'v1';
+const CACHE_NAME = 'profile-pwa-v3';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './parchment.ttf',
   './manifest.json',
-  './image.png'
+  './image.png',
+  './js/back.js',
+  './js/theme.js',
+  './js/follow.js',
+  './js/navigator-sw.js'
 ];
 
 self.addEventListener('install', event => {

@@ -35,7 +35,7 @@ class FollowController {
     const following = this.isFollowing();
     const count = this.getFollowersCount();
 
-    this.button.textContent = following ? 'Отписаться' : 'Подписаться';
+    this.button.textContent = following ? 'Unfollow' : 'Follow';
     this.button.classList.toggle('profile-button--following', following);
     this.followersValue.textContent = String(count);
   }
