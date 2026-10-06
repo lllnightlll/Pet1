@@ -12,6 +12,7 @@ target/
 *.iml
 *.ipr
 .env
+.gradle/
 out
 
 ### Eclipse ###
@@ -35,6 +36,13 @@ build/
 
 ### VS Code ###
 .vscode/
+.cursor/
+.cursorrules
 
 ### Mac OS ###
 .DS_Store
+
+### Other ###
+*.log
+hs_err_pid*.log
+/data/
