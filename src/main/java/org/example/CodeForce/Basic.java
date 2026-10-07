@@ -10,7 +10,9 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.StringTokenizer;
 import java.util.Comparator;
 import java.util.TreeMap;
@@ -271,6 +273,330 @@ public class Basic {
             }
             result.sort(null);
             return result;
+        }
+    }
+
+    /**
+     * Универсальный граф для CF: вершины 1..n, списки смежности O(n+m),
+     * без чтения stdin и без рекурсии.
+     *
+     * Не выделяет n² ячеек и не вызывает DFS стеком JVM — обход идёт явным
+     * ArrayDeque, так что n = 10⁵ не даёт ни OOM, ни StackOverflow.
+     *
+     * Компоненты, MST и циклы без ориентации опираются на {@link DisjointSetUnion}:
+     * сжатие путей и объединение по размеру, O(α(n)) на запрос.
+     */
+    @SuppressWarnings("unchecked")
+    static final class Graph {
+        static final class Edge {
+            final int from;
+            final int to;
+            final long weight;
+
+            Edge(int from, int to) {
+                this(from, to, 1L);
+            }
+
+            Edge(int from, int to, long weight) {
+                this.from = from;
+                this.to = to;
+                this.weight = weight;
+            }
+        }
+
+        /**
+         * СНМ. Вершины 1..n (индекс 0 не используется).
+         */
+        static final class DisjointSetUnion {
+            private final int[] parent;
+            private final int[] size;
+            private int componentCount;
+
+            DisjointSetUnion(int vertexCount) {
+                parent = new int[vertexCount + 1];
+                size = new int[vertexCount + 1];
+                reset();
+            }
+
+            void reset() {
+                componentCount = parent.length - 1;
+                for (int vertex = 0; vertex < parent.length; vertex++) {
+                    parent[vertex] = vertex;
+                    size[vertex] = 1;
+                }
+            }
+
+            int find(int vertex) {
+                while (parent[vertex] != vertex) {
+                    parent[vertex] = parent[parent[vertex]];
+                    vertex = parent[vertex];
+                }
+                return vertex;
+            }
+
+            /** true, если вершины были в разных компонентах и их объединили. */
+            boolean union(int first, int second) {
+                int firstRoot = find(first);
+                int secondRoot = find(second);
+                if (firstRoot == secondRoot) {
+                    return false;
+                }
+                if (size[firstRoot] < size[secondRoot]) {
+                    int swap = firstRoot;
+                    firstRoot = secondRoot;
+                    secondRoot = swap;
+                }
+                parent[secondRoot] = firstRoot;
+                size[firstRoot] += size[secondRoot];
+                componentCount--;
+                return true;
+            }
+
+            boolean connected(int first, int second) {
+                return find(first) == find(second);
+            }
+
+            int sizeOf(int vertex) {
+                return size[find(vertex)];
+            }
+
+            int componentCount() {
+                return componentCount;
+            }
+        }
+
+        static final class Forest {
+            final ArrayList<Edge> edges;
+            final long totalWeight;
+            final int treeEdgeCount;
+
+            private Forest(ArrayList<Edge> edges, long totalWeight) {
+                this.edges = edges;
+                this.totalWeight = totalWeight;
+                this.treeEdgeCount = edges.size();
+            }
+
+            boolean isSpanningTree(int vertexCount) {
+                return treeEdgeCount == vertexCount - 1;
+            }
+        }
+
+        private final int vertexCount;
+        private final boolean directed;
+        private final ArrayList<Edge>[] outgoing;
+        private final ArrayList<Edge> edges;
+
+        static Graph undirected(int vertexCount) {
+            return new Graph(vertexCount, false);
+        }
+
+        static Graph directed(int vertexCount) {
+            return new Graph(vertexCount, true);
+        }
+
+        private Graph(int vertexCount, boolean directed) {
+            this.vertexCount = vertexCount;
+            this.directed = directed;
+            this.outgoing = new ArrayList[vertexCount + 1];
+            for (int vertex = 1; vertex <= vertexCount; vertex++) {
+                outgoing[vertex] = new ArrayList<>();
+            }
+            this.edges = new ArrayList<>();
+        }
+
+        int vertexCount() {
+            return vertexCount;
+        }
+
+        boolean isDirected() {
+            return directed;
+        }
+
+        ArrayList<Edge> edges() {
+            return edges;
+        }
+
+        ArrayList<Edge> neighbors(int vertex) {
+            return outgoing[vertex];
+        }
+
+        void addEdge(int from, int to) {
+            addEdge(from, to, 1L);
+        }
+
+        void addEdge(int from, int to, long weight) {
+            Edge edge = new Edge(from, to, weight);
+            edges.add(edge);
+            outgoing[from].add(edge);
+            if (!directed) {
+                outgoing[to].add(new Edge(to, from, weight));
+            }
+        }
+
+        /**
+         * Итеративный BFS. Расстояния в рёбрах, недостижимые вершины = -1.
+         */
+        long[] bfsDistances(int start) {
+            long[] distance = new long[vertexCount + 1];
+            Arrays.fill(distance, -1L);
+            ArrayDeque<Integer> queue = new ArrayDeque<>();
+            distance[start] = 0;
+            queue.addLast(start);
+            while (!queue.isEmpty()) {
+                int vertex = queue.removeFirst();
+                for (Edge edge : outgoing[vertex]) {
+                    if (distance[edge.to] != -1L) {
+                        continue;
+                    }
+                    distance[edge.to] = distance[vertex] + 1;
+                    queue.addLast(edge.to);
+                }
+            }
+            return distance;
+        }
+
+        /**
+         * Итеративный DFS: порядок входа в вершины. Стек явный, не кадры JVM.
+         */
+        ArrayList<Integer> dfsOrder(int start) {
+            boolean[] visited = new boolean[vertexCount + 1];
+            ArrayList<Integer> order = new ArrayList<>();
+            fillDfsFrom(start, visited, order);
+            return order;
+        }
+
+        /**
+         * Компоненты связности. Для ориентированного графа — слабые
+         * (направление рёбер игнорируется), иначе обычные неориентированные.
+         */
+        ArrayList<ArrayList<Integer>> components() {
+            boolean[] visited = new boolean[vertexCount + 1];
+            ArrayList<Edge>[] walk = directed ? undirectedView() : outgoing;
+            ArrayList<ArrayList<Integer>> result = new ArrayList<>();
+            for (int start = 1; start <= vertexCount; start++) {
+                if (visited[start]) {
+                    continue;
+                }
+                ArrayList<Integer> component = new ArrayList<>();
+                ArrayDeque<Integer> stack = new ArrayDeque<>();
+                visited[start] = true;
+                stack.addLast(start);
+                while (!stack.isEmpty()) {
+                    int vertex = stack.removeLast();
+                    component.add(vertex);
+                    for (Edge edge : walk[vertex]) {
+                        if (visited[edge.to]) {
+                            continue;
+                        }
+                        visited[edge.to] = true;
+                        stack.addLast(edge.to);
+                    }
+                }
+                result.add(component);
+            }
+            return result;
+        }
+
+        /**
+         * Топологический порядок (Кан). null, если есть цикл.
+         * Имеет смысл для ориентированного графа.
+         */
+        ArrayList<Integer> topologicalOrder() {
+            int[] indegree = new int[vertexCount + 1];
+            for (Edge edge : edges) {
+                indegree[edge.to]++;
+            }
+            ArrayDeque<Integer> queue = new ArrayDeque<>();
+            for (int vertex = 1; vertex <= vertexCount; vertex++) {
+                if (indegree[vertex] == 0) {
+                    queue.addLast(vertex);
+                }
+            }
+            ArrayList<Integer> order = new ArrayList<>(vertexCount);
+            while (!queue.isEmpty()) {
+                int vertex = queue.removeFirst();
+                order.add(vertex);
+                for (Edge edge : outgoing[vertex]) {
+                    indegree[edge.to]--;
+                    if (indegree[edge.to] == 0) {
+                        queue.addLast(edge.to);
+                    }
+                }
+            }
+            if (order.size() != vertexCount) {
+                return null;
+            }
+            return order;
+        }
+
+        /**
+         * Минимальный остовный лес Крускалом (по возрастанию веса).
+         * Для связного неориентированного графа это MST.
+         */
+        Forest kruskal() {
+            Edge[] sorted = edges.toArray(new Edge[0]);
+            Arrays.sort(sorted, Comparator.comparingLong(edge -> edge.weight));
+            DisjointSetUnion dsu = new DisjointSetUnion(vertexCount);
+            ArrayList<Edge> forest = new ArrayList<>();
+            long totalWeight = 0;
+            for (Edge edge : sorted) {
+                if (dsu.union(edge.from, edge.to)) {
+                    forest.add(edge);
+                    totalWeight += edge.weight;
+                }
+            }
+            return new Forest(forest, totalWeight);
+        }
+
+        /** Компоненты через DSU без обхода списков смежности. */
+        DisjointSetUnion disjointSetUnion() {
+            DisjointSetUnion dsu = new DisjointSetUnion(vertexCount);
+            for (Edge edge : edges) {
+                dsu.union(edge.from, edge.to);
+            }
+            return dsu;
+        }
+
+        boolean hasUndirectedCycle() {
+            DisjointSetUnion dsu = new DisjointSetUnion(vertexCount);
+            for (Edge edge : edges) {
+                if (!dsu.union(edge.from, edge.to)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void fillDfsFrom(int start, boolean[] visited, ArrayList<Integer> order) {
+            ArrayDeque<Integer> stack = new ArrayDeque<>();
+            visited[start] = true;
+            stack.addLast(start);
+            while (!stack.isEmpty()) {
+                int vertex = stack.removeLast();
+                order.add(vertex);
+                ArrayList<Edge> neighbors = outgoing[vertex];
+                for (int i = neighbors.size() - 1; i >= 0; i--) {
+                    int next = neighbors.get(i).to;
+                    if (visited[next]) {
+                        continue;
+                    }
+                    visited[next] = true;
+                    stack.addLast(next);
+                }
+            }
+        }
+
+        /** Неориентированный вид: каждое ребро в обе стороны, O(n+m). */
+        private ArrayList<Edge>[] undirectedView() {
+            ArrayList<Edge>[] both = new ArrayList[vertexCount + 1];
+            for (int vertex = 1; vertex <= vertexCount; vertex++) {
+                both[vertex] = new ArrayList<>();
+            }
+            for (Edge edge : edges) {
+                both[edge.from].add(edge);
+                both[edge.to].add(new Edge(edge.to, edge.from, edge.weight));
+            }
+            return both;
         }
     }
 
