@@ -1,0 +1,147 @@
+```mermaid
+erDiagram
+
+CUSTOMERS 
+{       
+	int customer_id PK        
+	varchar name        
+	varchar address       
+	varchar phone        
+	varchar email        
+	varchar inn UK        
+	boolean is_active        
+	timestamp created_at    }    
+
+SUPPLIERS {        
+	int supplier_id PK        
+	varchar name       
+	varchar address       
+	varchar phone        
+	varchar email        
+	varchar inn UK        
+	boolean is_active    }     
+
+ORDERS {        
+	int order_id PK        
+	int customer_id FK        
+	int store_id FK        
+	date order_date        
+	decimal total_sum        
+	decimal discount_pct        
+	decimal discount_amount    }     
+   
+ORDER_ITEMS {        
+	int order_id PK, FK        
+	int product_id PK, FK        
+	decimal quantity        
+	decimal price        
+	decimal discount_pct    }     
+
+PRODUCT_PRICE_HISTORY {        
+	int price_id PK        
+	int product_id FK        
+	int supplier_id FK        
+	decimal price        
+	date valid_from        
+	date valid_to    }     
+   
+DISCOUNT_RULES {        
+	int rule_id PK        
+	int customer_id FK, UK        
+	decimal discount_pct        
+	date valid_from        
+	date valid_to        
+	boolean is_active    } 
+	
+SUPPLIES {        
+	int supply_id PK        
+	int supplier_id FK        
+	int product_id FK        
+	decimal quantity        
+	decimal price_per_unit        
+	date supply_date        
+	date expiry_date        
+	varchar document_number    }    
+	
+SUPPLIES_AUDIT {        
+	int audit_id PK        
+	int supply_id        
+	int supplier_id        
+	int product_id        
+	decimal quantity        
+	decimal price_per_unit        
+	date supply_date        
+	date expiry_date        
+	varchar document_number        
+	varchar operation        
+	varchar changed_by       
+	timestamp changed_at    }     
+   
+WAREHOUSE_STOCK {        
+	int product_id PK, FK        
+	decimal quantity        
+	timestamp last_updated    }    
+
+PLAN_STOCK {        
+	int product_id PK, FK        
+	decimal plan_qty    }    
+	
+CATEGORIES {        
+	int category_id PK        
+	int parent_id FK        
+	varchar name    }    
+	
+PRODUCTS {        
+	int product_id PK        
+	int category_id FK        
+	varchar name        
+	varchar unit        
+	varchar barcode UK        
+	int shelf_life_days        
+	boolean is_active        
+	timestamp created_at    }     
+   
+STORES {        
+	int store_id PK        
+	varchar name        
+	varchar address        
+	varchar phone        
+	varchar email        
+	boolean is_active    }     
+
+STORE_STOCK {        
+	int product_id PK, FK        
+	int store_id PK, FK        
+	decimal quantity        
+	timestamp last_updated    }     
+   
+MOVEMENTS {        
+	int movement_id PK        
+	int product_id FK        
+	int store_id FK        
+	varchar movement_type        
+	decimal quantity        
+	date movement_date        
+	varchar document_number    }     
+
+CATEGORIES ||--o{ PRODUCTS : "относится" 
+STORES ||--o{ ORDERS : "точка продажи" 
+ORDERS ||--|{ ORDER_ITEMS : "содержит" 
+CUSTOMERS ||--o{ ORDERS : "покупает"  
+
+PRODUCTS ||--o{ SUPPLIES : "приходуется"    
+SUPPLIERS ||--o{ SUPPLIES : "поставляет на склад"    
+SUPPLIES ||--o{ SUPPLIES_AUDIT : "старая запись"         
+
+PRODUCTS ||--o| WAREHOUSE_STOCK : "факт на складе"    
+PRODUCTS ||--o| PLAN_STOCK : "план на складе"     
+STORES ||--o{ STORE_STOCK : "хранит"    
+PRODUCTS ||--o{ STORE_STOCK : "лежит в магазине"  
+
+STORES ||--o{ MOVEMENTS : "получает / возвращает" 
+PRODUCTS ||--o{ MOVEMENTS : "перемещается"     
+PRODUCTS ||--o{ PRODUCT_PRICE_HISTORY : "имеет цену"    
+SUPPLIERS ||--o{ PRODUCT_PRICE_HISTORY : "меняет цену"     
+PRODUCTS ||--o{ ORDER_ITEMS : "в заказе"
+CUSTOMERS ||--o| DISCOUNT_RULES : "фиксированная скидка"
+```
