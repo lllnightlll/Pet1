@@ -1,27 +1,22 @@
 [
   {
-    "officeId": 1,
-    "sites": [12, 26, 27, 16, 6, 11, 17, 23],
+    "officeId": 0,
+    "sites": [26, 27, 16, 14, 11, 18, 12, 0, 25],
     "workers": [0, 1]
   },
   {
     "officeId": 2,
-    "sites": [8, 1, 19, 20, 25],
+    "sites": [8, 1, 2, 22, 20, 23, 7],
     "workers": [2, 3]
   },
   {
-    "officeId": 3,
-    "sites": [10, 28, 9, 13],
+    "officeId": 4,
+    "sites": [10, 28, 9, 6, 17, 5],
     "workers": [4, 5]
   },
   {
-    "officeId": 4,
-    "sites": [22, 5, 3, 14, 7],
-    "workers": [6, 7]
-  },
-  {
     "officeId": 5,
-    "sites": [24, 15, 21, 2, 0],
-    "workers": [8]
+    "sites": [24, 15, 19, 4, 21, 13, 3],
+    "workers": [6, 7]
   }
 ]

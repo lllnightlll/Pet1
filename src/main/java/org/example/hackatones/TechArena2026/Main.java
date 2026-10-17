@@ -348,6 +348,15 @@ public class Main {
             return out;
         }
 
+        static List<Integer> intList(Object value) {
+            int[] a = intArray(value);
+            List<Integer> out = new ArrayList<>(a.length);
+            for (int v : a) {
+                out.add(v);
+            }
+            return out;
+        }
+
         boolean siteFeasible(int siteId) {
             BitSet need = sites[siteId].skillSet;
             for (int s = need.nextSetBit(0); s >= 0; s = need.nextSetBit(s + 1)) {
@@ -382,6 +391,56 @@ public class Main {
 
         static Solution empty() {
             return new Solution(List.of(), 0.0);
+        }
+
+        /** Целевая как в validate_solution.py. */
+        static double objectiveOf(Instance inst, List<OpenedOffice> opened) {
+            if (opened.isEmpty()) {
+                return 0.0;
+            }
+            double reward = 0;
+            double distance = 0;
+            double cost = 0;
+            int minTasks = Integer.MAX_VALUE;
+            int maxTasks = 0;
+            for (OpenedOffice o : opened) {
+                cost += inst.offices[o.officeId].cost;
+                int tasks = 0;
+                for (int s : o.sites) {
+                    reward += inst.sites[s].reward;
+                    distance += inst.distances[o.officeId][s];
+                    tasks += inst.sites[s].tasks.length;
+                }
+                minTasks = Math.min(minTasks, tasks);
+                maxTasks = Math.max(maxTasks, tasks);
+            }
+            return reward - distance - cost - inst.balanceCoefficient * (maxTasks - minTasks);
+        }
+
+        static Solution checked(Instance inst, List<OpenedOffice> opened) {
+            if (opened.isEmpty() || !Constraints.valid(inst, opened)) {
+                return empty();
+            }
+            return new Solution(opened, objectiveOf(inst, opened));
+        }
+
+        @SuppressWarnings("unchecked")
+        static Solution fromJson(Instance inst, Object raw) {
+            if (!(raw instanceof List<?> arr)) {
+                return empty();
+            }
+            List<OpenedOffice> opened = new ArrayList<>();
+            for (Object item : arr) {
+                if (!(item instanceof Map<?, ?> map)) {
+                    return empty();
+                }
+                Map<String, Object> m = (Map<String, Object>) map;
+                opened.add(new OpenedOffice(
+                        (int) Instance.num(m.get("officeId")),
+                        Instance.intList(m.get("sites")),
+                        Instance.intList(m.get("workers"))));
+            }
+            return checked(inst, opened);
         }
 
         String toJson() {
@@ -695,26 +754,58 @@ public class Main {
             }
             Arrays.sort(rank, (a, b) -> Double.compare(singleObj[b], singleObj[a]));
 
-            int predicted = predictK(rank);
             int maxK = Math.min(nOff, inst.workers.length);
-            Set<Integer> searchedK = new HashSet<>();
-            // Пары/тройки всегда: predictK на топе рейтинга часто пропускает лучший набор.
-            for (int k : new int[]{2, 3}) {
-                if (k <= maxK && searchedK.add(k) && searchTimeLeft()) {
-                    searchK(k, rank);
+            // Малый nOff: полный перебор наборов. Cheap недооценивает пары — для
+            // nOff ≤ 8 сразу thorough, иначе дешёвый перебор и thorough элит.
+            if (nOff <= 8) {
+                searchAllMasks(maxK, true);
+            } else if (nOff <= 12) {
+                searchAllMasks(maxK, false);
+            } else {
+                int predicted = predictK(rank);
+                Set<Integer> searchedK = new HashSet<>();
+                for (int k : new int[]{2, 3}) {
+                    if (k <= maxK && searchedK.add(k) && searchTimeLeft()) {
+                        searchK(k, rank);
+                    }
                 }
-            }
-            int lo = Math.max(2, predicted - 1);
-            int hi = Math.min(maxK, predicted + 1);
-            for (int k = lo; k <= hi && searchTimeLeft(); k++) {
-                if (searchedK.add(k)) {
-                    searchK(k, rank);
+                int lo = Math.max(2, predicted - 1);
+                int hi = Math.min(maxK, predicted + 1);
+                for (int k = lo; k <= hi && searchTimeLeft(); k++) {
+                    if (searchedK.add(k)) {
+                        searchK(k, rank);
+                    }
                 }
+                searchSpread(rank, maxK);
+                searchUntilTime(rank, predicted, maxK);
             }
-            searchSpread(rank, maxK);
-            searchUntilTime(rank, predicted, maxK);
             refineThorough(rank);
             return best;
+        }
+
+        /**
+         * Все непустые подмножества офисов (2^nOff − 1). nOff ≤ 12 → ≤ 4095 наборов.
+         */
+        private void searchAllMasks(int maxK, boolean thorough) {
+            int nOff = inst.offices.length;
+            int limit = 1 << nOff;
+            for (int mask = 1; mask < limit && timeLeft(); mask++) {
+                if (!thorough && !searchTimeLeft()) {
+                    break;
+                }
+                int k = Integer.bitCount(mask);
+                if (k > maxK) {
+                    continue;
+                }
+                int[] ids = new int[k];
+                int p = 0;
+                for (int o = 0; o < nOff; o++) {
+                    if ((mask & (1 << o)) != 0) {
+                        ids[p++] = o;
+                    }
+                }
+                consider(construct(ids, thorough));
+            }
         }
 
         /**
@@ -1131,12 +1222,17 @@ public class Main {
             }
 
             Solution bestLocal = Solution.empty();
-            boolean[] roadModes = thorough ? new boolean[]{false, true} : new boolean[]{false};
-            for (boolean road : roadModes) {
+            List<List<Cand>[]> pools = new ArrayList<>();
+            pools.add(clusterSites(oid, false));
+            if (thorough) {
+                pools.add(clusterSites(oid, true));
+                pools.add(clusterCapped(oid, false));
+                pools.add(clusterCapped(oid, true));
+            }
+            for (List<Cand>[] pool : pools) {
                 if (!timeLeft()) {
                     break;
                 }
-                List<Cand>[] pool = clusterSites(oid, road);
                 List<BitSet[]> policies = new ArrayList<>();
                 policies.add(assignSkillsConcentrate(oid, pool));
                 if (thorough) {
@@ -1195,6 +1291,68 @@ public class Main {
             return pool;
         }
 
+        /**
+         * Жадно кладём объект в офис с лучшим (reward−dist) среди тех,
+         * у кого ещё есть ёмкость. Вороной без капа сваливает всё на один офис.
+         */
+        @SuppressWarnings("unchecked")
+        private List<Cand>[] clusterCapped(int[] oid, boolean road) {
+            int k = oid.length;
+            List<Cand>[] pool = new List[k];
+            int[] load = new int[k];
+            for (int t = 0; t < k; t++) {
+                pool[t] = new ArrayList<>();
+            }
+            Integer[] order = new Integer[inst.sites.length];
+            int nFeas = 0;
+            for (int s = 0; s < inst.sites.length; s++) {
+                if (inst.siteFeasible(s)) {
+                    order[nFeas++] = s;
+                }
+            }
+            Arrays.sort(order, 0, nFeas, (a, b) -> {
+                double va = bestRoadValue(oid, a);
+                double vb = bestRoadValue(oid, b);
+                return Double.compare(vb, va);
+            });
+            for (int i = 0; i < nFeas; i++) {
+                int s = order[i];
+                int bestT = -1;
+                double bestV = -1e100;
+                double bestKey = Double.POSITIVE_INFINITY;
+                for (int t = 0; t < k; t++) {
+                    if (load[t] >= inst.offices[oid[t]].maxSize) {
+                        continue;
+                    }
+                    double v = inst.sites[s].reward - inst.distances[oid[t]][s];
+                    double key = road
+                            ? inst.distances[oid[t]][s]
+                            : Geometry.euclid2(inst.sites[s].pos, inst.offices[oid[t]].pos);
+                    if (v > bestV + 1e-15 || (Math.abs(v - bestV) <= 1e-15 && key < bestKey)) {
+                        bestV = v;
+                        bestKey = key;
+                        bestT = t;
+                    }
+                }
+                if (bestT >= 0) {
+                    pool[bestT].add(new Cand(s, bestV, inst.sites[s].tasks.length));
+                    load[bestT]++;
+                }
+            }
+            for (int t = 0; t < k; t++) {
+                pool[t].sort((a, b) -> Double.compare(b.value, a.value));
+            }
+            return pool;
+        }
+
+        private double bestRoadValue(int[] oid, int site) {
+            double best = -1e100;
+            for (int id : oid) {
+                best = Math.max(best, inst.sites[site].reward - inst.distances[id][site]);
+            }
+            return best;
+        }
+
         @SuppressWarnings("unchecked")
         private Solution buildFromSkills(int[] oid, List<Cand>[] pool, BitSet[] officeSkills,
                                          boolean thorough) {
@@ -1213,10 +1371,11 @@ public class Main {
                     }
                 }
             }
-            improve(oid, taken, left, officeSkills);
+            improve(oid, taken, left, officeSkills, thorough);
             if (thorough) {
                 stealSites(oid, taken, officeSkills);
                 recoverLeftovers(oid, taken, officeSkills);
+                return polishSafe(oid, taken, officeSkills);
             }
             return finalize(oid, taken);
         }
@@ -1265,10 +1424,27 @@ public class Main {
                         inst.sites[s].tasks.length));
                 used[s] = true;
             }
-            improve(oid, taken, left, skills);
+            improve(oid, taken, left, skills, true);
             stealSites(oid, taken, skills);
             recoverLeftovers(oid, taken, skills);
-            return finalize(oid, taken);
+            return polishSafe(oid, taken, skills);
+        }
+
+        /**
+         * Polish может улучшить score(), но finalize потом чинит геометрию/баланс
+         * и иногда теряет цель. Берём максимум до и после полировки.
+         */
+        @SuppressWarnings("unchecked")
+        private Solution polishSafe(int[] oid, List<Cand>[] taken, BitSet[] skills) {
+            List<Cand>[] before = new List[taken.length];
+            for (int t = 0; t < taken.length; t++) {
+                before[t] = new ArrayList<>(taken[t]);
+            }
+            polish(oid, taken, skills);
+            recoverLeftovers(oid, taken, skills);
+            Solution polished = finalize(oid, taken);
+            Solution plain = finalize(oid, before);
+            return polished.objective > plain.objective ? polished : plain;
         }
 
         /**
@@ -1619,7 +1795,8 @@ public class Main {
                     if (!coveredBy(s, skills[t])) {
                         continue;
                     }
-                    if (++tried > DIRECT_TRY_CAP) {
+                    int directCap = inst.sites.length <= 80 ? rest.size() : DIRECT_TRY_CAP;
+                    if (++tried > directCap) {
                         break;
                     }
                     taken[t].add(candOf(oid[t], s));
@@ -1654,7 +1831,7 @@ public class Main {
             double before = score(oid, taken);
             int bestT1 = -1, bestT2 = -1, bestS1 = -1, bestS2 = -1;
             double bestSc = before;
-            int nTry = Math.min(rest.size(), PAIR_TRY_CAP);
+            int nTry = Math.min(rest.size(), inst.sites.length <= 80 ? rest.size() : PAIR_TRY_CAP);
             for (int t1 = 0; t1 < oid.length && timeLeft(); t1++) {
                 if (taken[t1].isEmpty() || taken[t1].size() >= inst.offices[oid[t1]].maxSize) {
                     continue;
@@ -1709,6 +1886,239 @@ public class Main {
             return true;
         }
 
+        /**
+         * Локальный поиск назначения: закрыть слабый офис, выровнять |сайтов|,
+         * перенести/обменять объекты. Геометрия и работники проверяются сразу.
+         */
+        private void polish(int[] oid, List<Cand>[] taken, BitSet[] skills) {
+            int guard = 0;
+            boolean changed = true;
+            while (changed && guard++ < 80 && timeLeft()) {
+                changed = tryCloseOffice(oid, taken)
+                        || tryShiftToBalance(oid, taken, skills, true)
+                        || relocateBest(oid, taken, skills)
+                        || swapBest(oid, taken, skills);
+            }
+        }
+
+        private boolean tryCloseOffice(int[] oid, List<Cand>[] taken) {
+            if (liveCount(taken) < 2) {
+                return false;
+            }
+            double cur = score(oid, taken);
+            int bestT = -1;
+            double bestSc = cur;
+            for (int t = 0; t < oid.length && timeLeft(); t++) {
+                if (taken[t].isEmpty()) {
+                    continue;
+                }
+                List<Cand> saved = new ArrayList<>(taken[t]);
+                taken[t].clear();
+                boolean ok = assignmentGeometryOk(oid, taken) && workersFeasible(oid, taken);
+                double sc = ok ? score(oid, taken) : -1e100;
+                taken[t].addAll(saved);
+                if (sc > bestSc + 1e-9) {
+                    bestSc = sc;
+                    bestT = t;
+                }
+            }
+            if (bestT < 0) {
+                return false;
+            }
+            taken[bestT].clear();
+            return true;
+        }
+
+        private boolean tryShiftToBalance(int[] oid, List<Cand>[] taken, BitSet[] skills, boolean checkGeo) {
+            int minI = -1;
+            int maxI = -1;
+            int minV = Integer.MAX_VALUE;
+            int maxV = -1;
+            for (int t = 0; t < taken.length; t++) {
+                int sz = taken[t].size();
+                if (sz == 0) {
+                    continue;
+                }
+                if (sz < minV) {
+                    minV = sz;
+                    minI = t;
+                }
+                if (sz > maxV) {
+                    maxV = sz;
+                    maxI = t;
+                }
+            }
+            if (minI < 0 || maxI < 0 || minI == maxI || maxV - minV <= inst.maxDifference) {
+                return false;
+            }
+            if (taken[minI].size() >= inst.offices[oid[minI]].maxSize) {
+                return false;
+            }
+            double cur = score(oid, taken);
+            int bestJ = -1;
+            double bestSc = cur;
+            for (int j = 0; j < taken[maxI].size() && timeLeft(); j++) {
+                Cand c = taken[maxI].get(j);
+                if (skills != null && !coveredBy(c.site, skills[minI])) {
+                    continue;
+                }
+                taken[maxI].remove(j);
+                taken[minI].add(candOf(oid[minI], c.site));
+                boolean ok = true;
+                if (checkGeo) {
+                    ok = assignmentGeometryOk(oid, taken) && workersFeasible(oid, taken);
+                }
+                double sc = ok ? score(oid, taken) : -1e100;
+                taken[minI].remove(taken[minI].size() - 1);
+                taken[maxI].add(j, c);
+                if (sc > bestSc + 1e-9) {
+                    bestSc = sc;
+                    bestJ = j;
+                }
+            }
+            if (bestJ < 0) {
+                return false;
+            }
+            Cand c = taken[maxI].remove(bestJ);
+            taken[minI].add(candOf(oid[minI], c.site));
+            return true;
+        }
+
+        private boolean relocateBest(int[] oid, List<Cand>[] taken, BitSet[] skills) {
+            double cur = score(oid, taken);
+            int bestFrom = -1;
+            int bestIdx = -1;
+            int bestTo = -1;
+            double bestSc = cur;
+            int perOffice = inst.sites.length <= 80 ? Integer.MAX_VALUE : 10;
+            for (int t = 0; t < oid.length && timeLeft(); t++) {
+                int nTry = Math.min(taken[t].size(), perOffice);
+                for (int i = 0; i < nTry; i++) {
+                    Cand c = taken[t].get(i);
+                    for (int u = 0; u < oid.length; u++) {
+                        if (u == t || taken[u].size() >= inst.offices[oid[u]].maxSize) {
+                            continue;
+                        }
+                        if (!coveredBy(c.site, skills[u])) {
+                            continue;
+                        }
+                        taken[t].remove(i);
+                        taken[u].add(candOf(oid[u], c.site));
+                        boolean ok = assignmentGeometryOk(oid, taken) && workersFeasible(oid, taken);
+                        double sc = ok ? score(oid, taken) : -1e100;
+                        taken[u].remove(taken[u].size() - 1);
+                        taken[t].add(i, c);
+                        if (sc > bestSc + 1e-9) {
+                            bestSc = sc;
+                            bestFrom = t;
+                            bestIdx = i;
+                            bestTo = u;
+                        }
+                    }
+                }
+            }
+            if (bestFrom < 0) {
+                return false;
+            }
+            Cand c = taken[bestFrom].remove(bestIdx);
+            taken[bestTo].add(candOf(oid[bestTo], c.site));
+            return true;
+        }
+
+        private boolean swapBest(int[] oid, List<Cand>[] taken, BitSet[] skills) {
+            if (oid.length < 2 || inst.sites.length > 90) {
+                return false;
+            }
+            double cur = score(oid, taken);
+            int bestT = -1, bestI = -1, bestU = -1, bestJ = -1;
+            double bestSc = cur;
+            for (int t = 0; t < oid.length && timeLeft(); t++) {
+                for (int u = t + 1; u < oid.length; u++) {
+                    if (taken[t].isEmpty() || taken[u].isEmpty()) {
+                        continue;
+                    }
+                    for (int i = 0; i < taken[t].size(); i++) {
+                        Cand a = taken[t].get(i);
+                        if (!coveredBy(a.site, skills[u])) {
+                            continue;
+                        }
+                        for (int j = 0; j < taken[u].size(); j++) {
+                            Cand b = taken[u].get(j);
+                            if (!coveredBy(b.site, skills[t])) {
+                                continue;
+                            }
+                            taken[t].set(i, candOf(oid[t], b.site));
+                            taken[u].set(j, candOf(oid[u], a.site));
+                            boolean ok = assignmentGeometryOk(oid, taken) && workersFeasible(oid, taken);
+                            double sc = ok ? score(oid, taken) : -1e100;
+                            taken[t].set(i, a);
+                            taken[u].set(j, b);
+                            if (sc > bestSc + 1e-9) {
+                                bestSc = sc;
+                                bestT = t;
+                                bestI = i;
+                                bestU = u;
+                                bestJ = j;
+                            }
+                        }
+                    }
+                }
+            }
+            if (bestT < 0) {
+                return false;
+            }
+            Cand a = taken[bestT].get(bestI);
+            Cand b = taken[bestU].get(bestJ);
+            taken[bestT].set(bestI, candOf(oid[bestT], b.site));
+            taken[bestU].set(bestJ, candOf(oid[bestU], a.site));
+            return true;
+        }
+
+        private boolean assignmentGeometryOk(int[] oid, List<Cand>[] taken) {
+            List<Vec>[] hulls = currentHulls(oid, taken);
+            boolean[][] covered = new boolean[oid.length][];
+            for (int t = 0; t < oid.length; t++) {
+                if (hulls[t] != null) {
+                    covered[t] = coverMask(hulls[t]);
+                }
+            }
+            int n = inst.sites.length + inst.offices.length;
+            for (int i = 0; i < oid.length; i++) {
+                if (covered[i] == null) {
+                    continue;
+                }
+                for (int j = i + 1; j < oid.length; j++) {
+                    if (covered[j] == null) {
+                        continue;
+                    }
+                    for (int p = 0; p < n; p++) {
+                        if (covered[i][p] && covered[j][p]) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        private boolean workersFeasible(int[] oid, List<Cand>[] taken) {
+            List<BitSet> needs = new ArrayList<>();
+            for (List<Cand> group : taken) {
+                if (group.isEmpty()) {
+                    continue;
+                }
+                List<Integer> sites = new ArrayList<>(group.size());
+                for (Cand c : group) {
+                    sites.add(c.site);
+                }
+                needs.add(skillsOf(sites));
+            }
+            if (needs.isEmpty()) {
+                return false;
+            }
+            return allocateWorkers(needs.toArray(BitSet[]::new)) != null;
+        }
+
         private boolean geometryAllows(int[] oid, List<Cand>[] taken, int t,
                                        List<Vec>[] hulls, boolean[][] covered) {
             List<Vec> hull = hullOf(oid[t], taken[t]);
@@ -1754,16 +2164,68 @@ public class Main {
             return true;
         }
 
-        private void improve(int[] oid, List<Cand>[] taken, List<Cand>[] left, BitSet[] officeSkills) {
+        @SuppressWarnings("unchecked")
+        private void improve(int[] oid, List<Cand>[] taken, List<Cand>[] left,
+                             BitSet[] officeSkills, boolean thorough) {
+            if (!thorough) {
+                improveOnce(oid, taken, left, officeSkills, 0);
+                return;
+            }
+            List<Cand>[] startTaken = copyGroups(taken);
+            List<Cand>[] startLeft = copyGroups(left);
+            double bestSc = -1e300;
+            List<Cand>[] bestTaken = copyGroups(taken);
+            List<Cand>[] bestLeft = copyGroups(left);
+            // 0 — старый порядок (trim→add→drop), 1 — сдвиг до trim, 2 — сдвиг после trim.
+            for (int mode = 0; mode <= 2; mode++) {
+                restoreGroups(taken, startTaken);
+                restoreGroups(left, startLeft);
+                improveOnce(oid, taken, left, officeSkills, mode);
+                double sc = score(oid, taken);
+                if (sc > bestSc + 1e-9) {
+                    bestSc = sc;
+                    bestTaken = copyGroups(taken);
+                    bestLeft = copyGroups(left);
+                }
+            }
+            restoreGroups(taken, bestTaken);
+            restoreGroups(left, bestLeft);
+        }
+
+        private void improveOnce(int[] oid, List<Cand>[] taken, List<Cand>[] left,
+                                 BitSet[] officeSkills, int mode) {
             int guard = 0;
             boolean changed = true;
             while (changed && guard++ < 4000 && timeLeft()) {
                 changed = false;
+                if (mode == 0) {
+                    if (trimSiteCounts(oid, taken, left)) {
+                        changed = true;
+                        continue;
+                    }
+                    if (tryBestAdd(oid, taken, left, officeSkills, 12)) {
+                        changed = true;
+                        continue;
+                    }
+                    if (tryBestDrop(oid, taken, left)) {
+                        changed = true;
+                    }
+                    continue;
+                }
+                int addCap = inst.sites.length <= 80 ? Integer.MAX_VALUE : 12;
+                if (tryBestAdd(oid, taken, left, officeSkills, addCap)) {
+                    changed = true;
+                    continue;
+                }
+                if (mode == 1 && tryShiftToBalance(oid, taken, officeSkills, false)) {
+                    changed = true;
+                    continue;
+                }
                 if (trimSiteCounts(oid, taken, left)) {
                     changed = true;
                     continue;
                 }
-                if (tryBestAdd(oid, taken, left, officeSkills)) {
+                if (mode == 2 && tryShiftToBalance(oid, taken, officeSkills, false)) {
                     changed = true;
                     continue;
                 }
@@ -1772,6 +2234,22 @@ public class Main {
                 }
             }
             trimSiteCounts(oid, taken, left);
+        }
+
+        @SuppressWarnings("unchecked")
+        private List<Cand>[] copyGroups(List<Cand>[] src) {
+            List<Cand>[] copy = new List[src.length];
+            for (int i = 0; i < src.length; i++) {
+                copy[i] = new ArrayList<>(src[i]);
+            }
+            return copy;
+        }
+
+        private void restoreGroups(List<Cand>[] dst, List<Cand>[] src) {
+            for (int i = 0; i < dst.length; i++) {
+                dst[i].clear();
+                dst[i].addAll(src[i]);
+            }
         }
 
         private boolean trimSiteCounts(int[] oid, List<Cand>[] taken, List<Cand>[] left) {
@@ -1809,7 +2287,8 @@ public class Main {
         }
 
         /** Добавляем объект, если прирост цели положительный (в т.ч. ради баланса задач). */
-        private boolean tryBestAdd(int[] oid, List<Cand>[] taken, List<Cand>[] left, BitSet[] officeSkills) {
+        private boolean tryBestAdd(int[] oid, List<Cand>[] taken, List<Cand>[] left,
+                                   BitSet[] officeSkills, int addCap) {
             double cur = score(oid, taken);
             int bestT = -1;
             int bestJ = -1;
@@ -1821,7 +2300,7 @@ public class Main {
                 }
                 indexByGain(left[t]);
                 int tried = 0;
-                for (int j = 0; j < left[t].size() && tried < 12; j++) {
+                for (int j = 0; j < left[t].size() && tried < addCap; j++) {
                     Cand c = left[t].get(j);
                     if (!coveredBy(c.site, officeSkills[t])) {
                         continue;

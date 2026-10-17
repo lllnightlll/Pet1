@@ -1,12 +1,12 @@
 [
   {
     "officeId": 0,
-    "sites": [13, 11, 6],
-    "workers": [2, 1]
+    "sites": [11, 6, 8],
+    "workers": [3]
   },
   {
     "officeId": 2,
-    "sites": [3, 8, 19, 12],
-    "workers": [3]
+    "sites": [13, 4, 3, 21],
+    "workers": [2]
   }
 ]

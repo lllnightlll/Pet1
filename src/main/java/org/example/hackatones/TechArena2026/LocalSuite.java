@@ -10,26 +10,77 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Локальный набор из 1000 синтетических тестов TechArena 2026.
- * Карты строятся здесь с нуля (не копируются из data/instance*).
- * Для каждого теста перебираются все подмножества офисов через
- * {@link Main.Solver#construct} (cheap и thorough) и записывается лучший ответ.
+ * Автотесты TechArena 2026: каждый запуск — новый seed и новые карты.
+ * {@code java LocalSuite} / {@code exam} — генерация + прогон солвера, все должны PASS.
+ * {@code generate} — записать карты; {@code train} — улучшить сохранённые ответы.
+ * Для воспроизведения падения: {@code java LocalSuite exam 1000 <dir> <seed>}.
  */
 public class LocalSuite {
 
-    /** Сколько задач положить в data/local_tests. */
+    /** Сколько задач в одном прогоне автогенерации. */
     private static final int TEST_COUNT = 1000;
-    /** Соль ГПСЧ, чтобы набор воспроизводился. */
-    private static final long FACTORY_SALT = 20261017L;
+    /** Лимит солвера на одну карту экзамена (малые nOff заканчивают раньше). */
+    private static final long EXAM_SOLVE_MS = 12_000L;
+    private static final Path DEFAULT_TESTS =
+            Path.of("src/main/java/org/example/hackatones/TechArena2026/data/local_tests");
+    private static final Path DEFAULT_EXAM =
+            Path.of("src/main/java/org/example/hackatones/TechArena2026/data/local_exam");
 
     public static void main(String[] args) throws Exception {
-        int count = args.length > 0 ? Integer.parseInt(args[0]) : TEST_COUNT;
-        Path root = Path.of(args.length > 1
-                ? args[1]
-                : "src/main/java/org/example/hackatones/TechArena2026/data/local_tests");
-        Files.createDirectories(root);
+        String cmd = args.length == 0 ? "exam" : args[0];
+        if ("train".equals(cmd)) {
+            int count = args.length > 1 ? Integer.parseInt(args[1]) : TEST_COUNT;
+            Path root = Path.of(args.length > 2 ? args[2] : DEFAULT_TESTS.toString());
+            train(root, count);
+            return;
+        }
+        if ("generate".equals(cmd) || looksLikeCount(cmd)) {
+            int count = "generate".equals(cmd)
+                    ? (args.length > 1 ? Integer.parseInt(args[1]) : TEST_COUNT)
+                    : Integer.parseInt(cmd);
+            Path root = Path.of(args.length > ("generate".equals(cmd) ? 2 : 1)
+                    ? args["generate".equals(cmd) ? 2 : 1]
+                    : DEFAULT_TESTS.toString());
+            long seed = args.length > ("generate".equals(cmd) ? 3 : 2)
+                    ? Long.parseLong(args["generate".equals(cmd) ? 3 : 2])
+                    : freshSeed();
+            generate(root, count, seed);
+            return;
+        }
+        int count = args.length > 1 ? Integer.parseInt(args[1]) : TEST_COUNT;
+        Path root = Path.of(args.length > 2 ? args[2] : DEFAULT_EXAM.toString());
+        long seed = args.length > 3 ? Long.parseLong(args[3]) : freshSeed();
+        boolean passed = exam(root, count, seed);
+        if (!passed) {
+            System.exit(1);
+        }
+    }
 
-        InstanceFactory factory = new InstanceFactory(FACTORY_SALT);
+    private static boolean looksLikeCount(String cmd) {
+        if (cmd.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < cmd.length(); i++) {
+            if (!Character.isDigit(cmd.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Новый seed на каждый запуск: время + наносекунды. */
+    static long freshSeed() {
+        long nano = System.nanoTime();
+        long millis = System.currentTimeMillis();
+        return nano ^ (millis * 0x9E3779B97F4A7C15L) ^ (nano << 21) ^ (nano >>> 17);
+    }
+
+    static void generate(Path root, int count, long seed) throws Exception {
+        Files.createDirectories(root);
+        Files.writeString(root.resolve("seed.txt"), Long.toString(seed), StandardCharsets.UTF_8);
+        System.out.printf(Locale.ROOT, "generate seed=%d count=%d%n", seed, count);
+
+        InstanceFactory factory = new InstanceFactory(seed);
         StringBuilder scores = new StringBuilder();
         scores.append("index\tfamily\tnSites\tnOff\tnWorkers\tobjective\n");
 
@@ -72,6 +123,186 @@ public class LocalSuite {
         Files.writeString(root.resolve("scores.tsv"), scores.toString(), StandardCharsets.UTF_8);
         System.out.printf(Locale.ROOT, "done: %d tests, nonempty=%d, meanObj=%.4f, root=%s%n",
                 count, nonempty, sumObj / Math.max(1, count), root.toAbsolutePath());
+    }
+
+    /**
+     * Автогенерация нового набора (другой seed каждый запуск) и прогон {@link Main.Solver}.
+     * Тест считается пройденным, если ответ валиден, цель совпадает с формулой
+     * и не хуже лучшего одиночного офиса.
+     *
+     * @return true, если все карты пройдены
+     */
+    static boolean exam(Path root, int count, long seed) throws Exception {
+        Files.createDirectories(root);
+        Files.writeString(root.resolve("seed.txt"), Long.toString(seed), StandardCharsets.UTF_8);
+        System.out.printf(Locale.ROOT, "exam seed=%d count=%d root=%s%n", seed, count, root);
+
+        InstanceFactory factory = new InstanceFactory(seed);
+        StringBuilder scores = new StringBuilder();
+        scores.append("index\tfamily\tnSites\tnOff\tstatus\tobj\tlb\n");
+        int passed = 0;
+        int failed = 0;
+        List<String> failures = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            Path dir = root.resolve(String.format(Locale.ROOT, "t%04d", i));
+            Files.createDirectories(dir);
+            DraftWorld world = factory.makeWorld(i);
+            String json = factory.toJson(world);
+            Files.writeString(dir.resolve("instance.json"), json, StandardCharsets.UTF_8);
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> raw = (Map<String, Object>) Main.Json.parse(json);
+            Main.Instance instance = Main.Instance.fromJson(raw);
+            Main.Solution solution;
+            String status;
+            double lb = 0.0;
+            try {
+                lb = singleLowerBound(instance);
+                solution = runSolve(instance);
+                status = judge(instance, solution, lb);
+            } catch (RuntimeException ex) {
+                solution = Main.Solution.empty();
+                status = "crash: " + ex.getClass().getSimpleName() + " " + ex.getMessage();
+            }
+            Files.writeString(dir.resolve("solution.json"), solution.toJson(), StandardCharsets.UTF_8);
+
+            boolean ok = "ok".equals(status);
+            if (ok) {
+                passed++;
+            } else {
+                failed++;
+                String line = String.format(Locale.ROOT, "FAIL t%04d %s obj=%.6f lb=%.6f %s",
+                        i, world.family.name(), solution.objective, lb, status);
+                failures.add(line);
+                System.out.println(line);
+                if (failures.size() >= 10) {
+                    System.out.println("exam abort: слишком много ошибок");
+                    break;
+                }
+            }
+            scores.append(i).append('\t')
+                    .append(world.family.name()).append('\t')
+                    .append(world.sites.size()).append('\t')
+                    .append(world.offices.size()).append('\t')
+                    .append(ok ? "PASS" : "FAIL").append('\t')
+                    .append(String.format(Locale.ROOT, "%.12f", solution.objective)).append('\t')
+                    .append(String.format(Locale.ROOT, "%.12f", lb))
+                    .append('\n');
+            if ((i + 1) % 50 == 0 || i == 0 || !ok) {
+                System.out.printf(Locale.ROOT, "exam %d/%d  passed=%d failed=%d  obj=%.4f  %s%n",
+                        i + 1, count, passed, failed, solution.objective, status);
+            }
+        }
+        Files.writeString(root.resolve("scores.tsv"), scores.toString(), StandardCharsets.UTF_8);
+        System.out.printf(Locale.ROOT, "exam %s: passed=%d failed=%d seed=%d%n",
+                failed == 0 ? "PASS" : "FAIL", passed, failed, seed);
+        for (String line : failures) {
+            System.out.println(line);
+        }
+        return failed == 0 && passed == count;
+    }
+
+    static Main.Solution runSolve(Main.Instance inst) {
+        Main.Solver solver = new Main.Solver(inst, System.nanoTime() + EXAM_SOLVE_MS * 1_000_000L);
+        return solver.solve();
+    }
+
+    /** Нижняя оценка: лучшая дешёвая одиночная сборка (или 0, если все убыточны). */
+    static double singleLowerBound(Main.Instance inst) {
+        Main.Solver solver = new Main.Solver(inst, System.nanoTime() + EXAM_SOLVE_MS * 1_000_000L);
+        double lb = 0.0;
+        for (int o = 0; o < inst.offices.length && solver.timeLeft(); o++) {
+            Main.Solution one = solver.construct(new int[]{o}, false);
+            if (one.offices.isEmpty()) {
+                continue;
+            }
+            if (!Main.Constraints.valid(inst, one.offices)) {
+                continue;
+            }
+            lb = Math.max(lb, one.objective);
+        }
+        return lb;
+    }
+
+    static String judge(Main.Instance inst, Main.Solution sol, double lowerBound) {
+        if (sol == null) {
+            return "null solution";
+        }
+        if (!sol.offices.isEmpty() && !Main.Constraints.valid(inst, sol.offices)) {
+            return "invalid constraints";
+        }
+        double recomputed = Main.Solution.objectiveOf(inst, sol.offices);
+        if (Math.abs(recomputed - sol.objective) > 1e-6) {
+            return "objective mismatch";
+        }
+        if (sol.objective + 1e-6 < lowerBound) {
+            return "worse than single office";
+        }
+        return "ok";
+    }
+
+    /**
+     * Пересчитывает ответы усиленным солвером, не трогая instance.json.
+     * Если новая цель выше сохранённой — перезаписывает solution.json.
+     */
+    static void train(Path root, int count) throws Exception {
+        StringBuilder scores = new StringBuilder();
+        scores.append("index\tfamily\tnSites\tnOff\tnWorkers\tobj_old\tobj_new\tdelta\n");
+        int improved = 0;
+        int equal = 0;
+        int worse = 0;
+        double sumNew = 0.0;
+        double sumDelta = 0.0;
+        for (int i = 0; i < count; i++) {
+            Path dir = root.resolve(String.format(Locale.ROOT, "t%04d", i));
+            Path instancePath = dir.resolve("instance.json");
+            Path solutionPath = dir.resolve("solution.json");
+            String instText = Files.readString(instancePath, StandardCharsets.UTF_8);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> raw = (Map<String, Object>) Main.Json.parse(instText);
+            Main.Instance instance = Main.Instance.fromJson(raw);
+            Main.Solution stored = Main.Solution.empty();
+            if (Files.exists(solutionPath)) {
+                stored = Main.Solution.fromJson(instance,
+                        Main.Json.parse(Files.readString(solutionPath, StandardCharsets.UTF_8)));
+            }
+            Main.Solution neu = new LocalOracle(instance).best();
+            Main.Solution keep = neu.objective > stored.objective + 1e-9 ? neu : stored;
+            if (keep != stored) {
+                Files.writeString(solutionPath, keep.toJson(), StandardCharsets.UTF_8);
+                improved++;
+            } else if (Math.abs(neu.objective - stored.objective) <= 1e-9) {
+                equal++;
+            } else {
+                worse++;
+            }
+            double delta = keep.objective - stored.objective;
+            sumNew += keep.objective;
+            sumDelta += delta;
+            scores.append(i).append('\t')
+                    .append(familyOf(i)).append('\t')
+                    .append(instance.sites.length).append('\t')
+                    .append(instance.offices.length).append('\t')
+                    .append(instance.workers.length).append('\t')
+                    .append(String.format(Locale.ROOT, "%.12f", stored.objective)).append('\t')
+                    .append(String.format(Locale.ROOT, "%.12f", keep.objective)).append('\t')
+                    .append(String.format(Locale.ROOT, "%.12f", delta))
+                    .append('\n');
+            if ((i + 1) % 50 == 0 || i == 0) {
+                System.out.printf(Locale.ROOT,
+                        "train %d/%d  old=%.4f new=%.4f keep=%.4f  improved=%d%n",
+                        i + 1, count, stored.objective, neu.objective, keep.objective, improved);
+            }
+        }
+        Files.writeString(root.resolve("scores.tsv"), scores.toString(), StandardCharsets.UTF_8);
+        System.out.printf(Locale.ROOT,
+                "train done: improved=%d equal=%d worseKeptOld=%d mean=%.4f sumDelta=%.4f%n",
+                improved, equal, worse, sumNew / Math.max(1, count), sumDelta);
+    }
+
+    static String familyOf(int index) {
+        Family[] all = Family.values();
+        return all[index % all.length].name();
     }
 
     /**
