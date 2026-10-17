@@ -1105,7 +1105,7 @@ public class Main {
          * добор чужих объектов с проверкой оболочек.
          */
         @SuppressWarnings("unchecked")
-        private Solution construct(int[] officeIds, boolean thorough) {
+        Solution construct(int[] officeIds, boolean thorough) {
             if (!timeLeft()) {
                 return Solution.empty();
             }
