@@ -142,39 +142,48 @@ CREATE TABLE IF NOT EXISTS MOVEMENTS (
 
 ALTER TABLE CATEGORIES
     ADD CONSTRAINT fk_categories_parent
-    FOREIGN KEY (parent_id) REFERENCES CATEGORIES (category_id);
+    FOREIGN KEY (parent_id) REFERENCES CATEGORIES (category_id)
+    ON DELETE SET NULL;
 
 ALTER TABLE PRODUCTS
     ADD CONSTRAINT fk_products_category
-    FOREIGN KEY (category_id) REFERENCES CATEGORIES (category_id);
+    FOREIGN KEY (category_id) REFERENCES CATEGORIES (category_id)
+    ON DELETE RESTRICT;
 
 ALTER TABLE ORDERS
     ADD CONSTRAINT fk_orders_customer
-    FOREIGN KEY (customer_id) REFERENCES CUSTOMERS (customer_id);
+    FOREIGN KEY (customer_id) REFERENCES CUSTOMERS (customer_id)
+    ON DELETE RESTRICT;
 
 ALTER TABLE ORDERS
     ADD CONSTRAINT fk_orders_store
-    FOREIGN KEY (store_id) REFERENCES STORES (store_id);
+    FOREIGN KEY (store_id) REFERENCES STORES (store_id)
+    ON DELETE RESTRICT;
 
 ALTER TABLE ORDER_ITEMS
     ADD CONSTRAINT fk_order_items_order
-    FOREIGN KEY (order_id) REFERENCES ORDERS (order_id);
+    FOREIGN KEY (order_id) REFERENCES ORDERS (order_id)
+    ON DELETE RESTRICT;
 
 ALTER TABLE ORDER_ITEMS
     ADD CONSTRAINT fk_order_items_product
-    FOREIGN KEY (product_id) REFERENCES PRODUCTS (product_id);
+    FOREIGN KEY (product_id) REFERENCES PRODUCTS (product_id)
+    ON DELETE RESTRICT;
 
 ALTER TABLE DISCOUNT_RULES
     ADD CONSTRAINT fk_discount_rules_customer
-    FOREIGN KEY (customer_id) REFERENCES CUSTOMERS (customer_id);
+    FOREIGN KEY (customer_id) REFERENCES CUSTOMERS (customer_id)
+    ON DELETE RESTRICT;
 
 ALTER TABLE SUPPLIES
     ADD CONSTRAINT fk_supplies_supplier
-    FOREIGN KEY (supplier_id) REFERENCES SUPPLIERS (supplier_id);
+    FOREIGN KEY (supplier_id) REFERENCES SUPPLIERS (supplier_id)
+    ON DELETE RESTRICT;
 
 ALTER TABLE SUPPLIES
     ADD CONSTRAINT fk_supplies_product
-    FOREIGN KEY (product_id) REFERENCES PRODUCTS (product_id);
+    FOREIGN KEY (product_id) REFERENCES PRODUCTS (product_id)
+    ON DELETE RESTRICT;
 
 ALTER TABLE SUPPLIES_AUDIT
     ADD CONSTRAINT fk_supplies_audit_supply
@@ -183,32 +192,40 @@ ALTER TABLE SUPPLIES_AUDIT
 
 ALTER TABLE WAREHOUSE_STOCK
     ADD CONSTRAINT fk_warehouse_stock_product
-    FOREIGN KEY (product_id) REFERENCES PRODUCTS (product_id);
+    FOREIGN KEY (product_id) REFERENCES PRODUCTS (product_id)
+    ON DELETE RESTRICT;
 
 ALTER TABLE PLAN_STOCK
     ADD CONSTRAINT fk_plan_stock_product
-    FOREIGN KEY (product_id) REFERENCES PRODUCTS (product_id);
+    FOREIGN KEY (product_id) REFERENCES PRODUCTS (product_id)
+    ON DELETE RESTRICT;
 
 ALTER TABLE STORE_STOCK
     ADD CONSTRAINT fk_store_stock_product
-    FOREIGN KEY (product_id) REFERENCES PRODUCTS (product_id);
+    FOREIGN KEY (product_id) REFERENCES PRODUCTS (product_id)
+    ON DELETE RESTRICT;
 
 ALTER TABLE STORE_STOCK
     ADD CONSTRAINT fk_store_stock_store
-    FOREIGN KEY (store_id) REFERENCES STORES (store_id);
+    FOREIGN KEY (store_id) REFERENCES STORES (store_id)
+    ON DELETE RESTRICT;
 
 ALTER TABLE MOVEMENTS
     ADD CONSTRAINT fk_movements_product
-    FOREIGN KEY (product_id) REFERENCES PRODUCTS (product_id);
+    FOREIGN KEY (product_id) REFERENCES PRODUCTS (product_id)
+    ON DELETE RESTRICT;
 
 ALTER TABLE MOVEMENTS
     ADD CONSTRAINT fk_movements_store
-    FOREIGN KEY (store_id) REFERENCES STORES (store_id);
+    FOREIGN KEY (store_id) REFERENCES STORES (store_id)
+    ON DELETE RESTRICT;
 
 ALTER TABLE PRODUCT_PRICE_HISTORY
     ADD CONSTRAINT fk_price_history_product
-    FOREIGN KEY (product_id) REFERENCES PRODUCTS (product_id);
+    FOREIGN KEY (product_id) REFERENCES PRODUCTS (product_id)
+    ON DELETE RESTRICT;
 
 ALTER TABLE PRODUCT_PRICE_HISTORY
     ADD CONSTRAINT fk_price_history_supplier
-    FOREIGN KEY (supplier_id) REFERENCES SUPPLIERS (supplier_id);
+    FOREIGN KEY (supplier_id) REFERENCES SUPPLIERS (supplier_id)
+    ON DELETE RESTRICT;
