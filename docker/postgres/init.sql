@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS SUPPLIERS (
     phone VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
     inn VARCHAR(255) UNIQUE NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 CREATE TABLE IF NOT EXISTS ORDERS (
@@ -229,3 +229,149 @@ ALTER TABLE PRODUCT_PRICE_HISTORY
     ADD CONSTRAINT fk_price_history_supplier
     FOREIGN KEY (supplier_id) REFERENCES SUPPLIERS (supplier_id)
     ON DELETE RESTRICT;
+
+-- 1. Справочники (отдельные INSERT: FK не видит вставки из соседнего WITH).
+INSERT INTO CATEGORIES (category_id, parent_id, name) VALUES
+    (1, NULL, 'Бакалея'),
+    (2, 1, 'Кондитерские изделия'),
+    (3, 1, 'Напитки');
+
+INSERT INTO CUSTOMERS (customer_id, name, address, phone, email, inn) VALUES
+    (1, 'ООО «Ромашка»', 'г. Омск, ул. Ленина, 12', '+7-3812-11-22-33', 'office@romashka.ru', '5501234567'),
+    (2, 'ИП Сидоров', 'г. Омск, ул. Пушкина, 8', '+7-3812-44-55-66', 'sidorov@mail.ru', '5507654321');
+
+INSERT INTO SUPPLIERS (supplier_id, name, address, phone, email, inn) VALUES
+    (1, 'АО «Большевик»', 'г. Москва, ул. Сущевский Вал, 5', '+7-495-111-22-33', 'sales@bolshevik.ru', '7701123456'),
+    (2, 'ООО «Кофейная карта»', 'г. Санкт-Петербург, Невский пр., 40', '+7-812-222-33-44', 'opt@coffeemap.ru', '7801987654');
+
+INSERT INTO STORES (store_id, name, address, phone, email) VALUES
+    (1, 'Магазин «Центральный»', 'г. Омск, ул. Ленина, 1', '+7-3812-10-10-10', 'center@store.ru');
+
+INSERT INTO PRODUCTS (product_id, category_id, name, unit, barcode, shelf_life_days) VALUES
+    (1, 2, 'Печенье «Юбилейное»', 'шт', '4600605020001', 180),
+    (2, 3, 'Кофе «Вдохновение»', 'шт', '4600605020002', 365);
+
+-- 2. Обороты.
+INSERT INTO DISCOUNT_RULES (rule_id, customer_id, discount_pct, valid_from, valid_to) VALUES
+    (1, 1, 5.00, DATE '2026-01-01', NULL);
+
+INSERT INTO SUPPLIES (supply_id, supplier_id, product_id, quantity, price_per_unit, supply_date, expiry_date, document_number) VALUES
+    (1, 1, 1, 500.00, 45.50, DATE '2026-03-01', DATE '2026-09-01', 'ПР-001'),
+    (2, 2, 2, 120.00, 310.00, DATE '2026-03-05', DATE '2027-03-05', 'ПР-002'),
+    (3, 1, 1, 10.00, 40.00, DATE '2005-11-01', DATE '2005-12-15', 'ПР-2005-12');
+
+INSERT INTO WAREHOUSE_STOCK (product_id, quantity) VALUES
+    (1, 400.00),
+    (2, 80.00);
+
+INSERT INTO PLAN_STOCK (product_id, plan_qty) VALUES
+    (1, 600.00),
+    (2, 100.00);
+
+INSERT INTO STORE_STOCK (product_id, store_id, quantity) VALUES
+    (1, 1, 40.00),
+    (2, 1, 10.00);
+
+INSERT INTO PRODUCT_PRICE_HISTORY (price_id, product_id, supplier_id, price, valid_from, valid_to) VALUES
+    (1, 1, 1, 45.50, DATE '2026-03-01', NULL),
+    (2, 2, 2, 310.00, DATE '2026-03-05', NULL),
+    (3, 1, 1, 98.00, DATE '2026-09-01', NULL);
+
+INSERT INTO ORDERS (order_id, customer_id, store_id, order_date, total_sum, discount_pct, discount_amount) VALUES
+    (1, 1, 1, DATE '2026-03-10', 864.50, 5.00, 45.50);
+
+INSERT INTO MOVEMENTS (movement_id, product_id, store_id, movement_type, quantity, movement_date, document_number) VALUES
+    (1, 1, 1, 'приход', 40.00, DATE '2026-03-08', 'ПЕР-001');
+
+INSERT INTO ORDER_ITEMS (order_id, product_id, quantity, price, discount_pct) VALUES
+    (1, 1, 20.00, 45.50, 5.00);
+
+-- Суммарные излишки и недостача по складу (факт минус план).
+SELECT
+    COALESCE(SUM(CASE
+        WHEN stock.quantity > plan.plan_qty THEN stock.quantity - plan.plan_qty
+        ELSE 0
+    END), 0) AS surplus_total,
+    COALESCE(SUM(CASE
+        WHEN stock.quantity < plan.plan_qty THEN plan.plan_qty - stock.quantity
+        ELSE 0
+    END), 0) AS shortage_total
+FROM WAREHOUSE_STOCK stock
+JOIN PLAN_STOCK plan ON plan.product_id = stock.product_id
+JOIN PRODUCTS product ON product.product_id = stock.product_id
+JOIN CATEGORIES category ON category.category_id = product.category_id
+WHERE category.category_id IN (
+        SELECT category_id
+        FROM CATEGORIES
+        WHERE category_id = 1
+           OR parent_id = 1
+    );
+
+-- Адрес предприятия, поставившего печенье «Юбилейное».
+SELECT DISTINCT supplier.name, supplier.address
+FROM PRODUCTS product
+JOIN SUPPLIES supply ON supply.product_id = product.product_id
+JOIN SUPPLIERS supplier ON supplier.supplier_id = supply.supplier_id
+WHERE product.name = 'Печенье «Юбилейное»';
+
+-- Удаление кофе «Вдохновение»: сначала хвосты, иначе RESTRICT не даст удалить товар.
+DELETE FROM STORE_STOCK
+WHERE product_id = (SELECT product_id FROM PRODUCTS WHERE name = 'Кофе «Вдохновение»');
+
+DELETE FROM WAREHOUSE_STOCK
+WHERE product_id = (SELECT product_id FROM PRODUCTS WHERE name = 'Кофе «Вдохновение»');
+
+DELETE FROM PLAN_STOCK
+WHERE product_id = (SELECT product_id FROM PRODUCTS WHERE name = 'Кофе «Вдохновение»');
+
+DELETE FROM PRODUCT_PRICE_HISTORY
+WHERE product_id = (SELECT product_id FROM PRODUCTS WHERE name = 'Кофе «Вдохновение»');
+
+DELETE FROM MOVEMENTS
+WHERE product_id = (SELECT product_id FROM PRODUCTS WHERE name = 'Кофе «Вдохновение»');
+
+DELETE FROM SUPPLIES
+WHERE product_id = (SELECT product_id FROM PRODUCTS WHERE name = 'Кофе «Вдохновение»');
+
+DELETE FROM PRODUCTS
+WHERE name = 'Кофе «Вдохновение»';
+
+-- Поставщики, поднявшие цену более чем на 50 руб. за последний год.
+SELECT supplier.name, product.name, older.price AS old_price, newer.price AS new_price,
+       newer.price - older.price AS price_delta
+FROM PRODUCT_PRICE_HISTORY older
+JOIN PRODUCT_PRICE_HISTORY newer
+    ON newer.product_id = older.product_id
+   AND newer.supplier_id = older.supplier_id
+   AND newer.valid_from > older.valid_from
+JOIN SUPPLIERS supplier ON supplier.supplier_id = newer.supplier_id
+JOIN PRODUCTS product ON product.product_id = newer.product_id
+WHERE newer.valid_from >= CURRENT_DATE - INTERVAL '1 year'
+  AND newer.price - older.price > 50;
+
+-- Товары, срок годности которых истекает в декабре 2005 года.
+SELECT product.name, supply.expiry_date, supply.document_number
+FROM SUPPLIES supply
+JOIN PRODUCTS product ON product.product_id = supply.product_id
+WHERE supply.expiry_date >= DATE '2005-12-01'
+  AND supply.expiry_date < DATE '2006-01-01';
+
+-- Новый магазин.
+INSERT INTO STORES (store_id, name, address, phone, email) VALUES
+    (2, 'Магазин «Левобережный»', 'г. Омск, ул. Дианова, 15', '+7-3812-20-20-20', 'left@store.ru');
+
+-- Свои запросы: товары ниже плана на складе; заказы клиента со скидкой.
+SELECT product.name, stock.quantity AS fact_qty, plan.plan_qty,
+       plan.plan_qty - stock.quantity AS below_plan
+FROM PRODUCTS product
+JOIN WAREHOUSE_STOCK stock ON stock.product_id = product.product_id
+JOIN PLAN_STOCK plan ON plan.product_id = product.product_id
+WHERE stock.quantity < plan.plan_qty;
+
+SELECT customer.name, orders.order_id, orders.order_date, orders.total_sum,
+       rules.discount_pct
+FROM CUSTOMERS customer
+JOIN ORDERS orders ON orders.customer_id = customer.customer_id
+JOIN DISCOUNT_RULES rules ON rules.customer_id = customer.customer_id
+WHERE rules.is_active = TRUE;
+
