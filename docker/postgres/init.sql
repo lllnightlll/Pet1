@@ -230,7 +230,6 @@ ALTER TABLE PRODUCT_PRICE_HISTORY
     FOREIGN KEY (supplier_id) REFERENCES SUPPLIERS (supplier_id)
     ON DELETE RESTRICT;
 
--- 1. Справочники (отдельные INSERT: FK не видит вставки из соседнего WITH).
 INSERT INTO CATEGORIES (category_id, parent_id, name) VALUES
     (1, NULL, 'Бакалея'),
     (2, 1, 'Кондитерские изделия'),
@@ -251,7 +250,6 @@ INSERT INTO PRODUCTS (product_id, category_id, name, unit, barcode, shelf_life_d
     (1, 2, 'Печенье «Юбилейное»', 'шт', '4600605020001', 180),
     (2, 3, 'Кофе «Вдохновение»', 'шт', '4600605020002', 365);
 
--- 2. Обороты.
 INSERT INTO DISCOUNT_RULES (rule_id, customer_id, discount_pct, valid_from, valid_to) VALUES
     (1, 1, 5.00, DATE '2026-01-01', NULL);
 
@@ -286,19 +284,37 @@ INSERT INTO MOVEMENTS (movement_id, product_id, store_id, movement_type, quantit
 INSERT INTO ORDER_ITEMS (order_id, product_id, quantity, price, discount_pct) VALUES
     (1, 1, 20.00, 45.50, 5.00);
 
--- Суммарные излишки и недостача по складу (факт минус план).
+-- Суммарные излишки и недостача
 SELECT
     COALESCE(SUM(CASE
-        WHEN stock.quantity > plan.plan_qty THEN stock.quantity - plan.plan_qty
+        WHEN supply_totals.supplied_qty > plan.plan_qty
+            THEN supply_totals.supplied_qty - plan.plan_qty
         ELSE 0
-    END), 0) AS surplus_total,
+    END), 0) AS surplus_vs_plan,
     COALESCE(SUM(CASE
-        WHEN stock.quantity < plan.plan_qty THEN plan.plan_qty - stock.quantity
+        WHEN supply_totals.supplied_qty < plan.plan_qty
+            THEN plan.plan_qty - supply_totals.supplied_qty
         ELSE 0
-    END), 0) AS shortage_total
-FROM WAREHOUSE_STOCK stock
-JOIN PLAN_STOCK plan ON plan.product_id = stock.product_id
-JOIN PRODUCTS product ON product.product_id = stock.product_id
+    END), 0) AS shortage_vs_plan,
+    COALESCE(SUM(CASE
+        WHEN supply_totals.supplied_qty > stock.quantity
+            THEN supply_totals.supplied_qty - stock.quantity
+        ELSE 0
+    END), 0) AS surplus_vs_warehouse,
+    COALESCE(SUM(CASE
+        WHEN supply_totals.supplied_qty < stock.quantity
+            THEN stock.quantity - supply_totals.supplied_qty
+        ELSE 0
+    END), 0) AS shortage_vs_warehouse
+FROM (
+    -- Несколько накладных по одному товару сводим в одну величину прихода.
+    SELECT product_id, SUM(quantity) AS supplied_qty
+    FROM SUPPLIES
+    GROUP BY product_id
+) supply_totals
+JOIN PLAN_STOCK plan ON plan.product_id = supply_totals.product_id
+JOIN WAREHOUSE_STOCK stock ON stock.product_id = supply_totals.product_id
+JOIN PRODUCTS product ON product.product_id = supply_totals.product_id
 JOIN CATEGORIES category ON category.category_id = product.category_id
 WHERE category.category_id IN (
         SELECT category_id
@@ -307,14 +323,14 @@ WHERE category.category_id IN (
            OR parent_id = 1
     );
 
--- Адрес предприятия, поставившего печенье «Юбилейное».
+-- Адрес предприятия, поставившего печенье «Юбилейное»
 SELECT DISTINCT supplier.name, supplier.address
 FROM PRODUCTS product
 JOIN SUPPLIES supply ON supply.product_id = product.product_id
 JOIN SUPPLIERS supplier ON supplier.supplier_id = supply.supplier_id
 WHERE product.name = 'Печенье «Юбилейное»';
 
--- Удаление кофе «Вдохновение»: сначала хвосты, иначе RESTRICT не даст удалить товар.
+-- Удаление кофе «Вдохновение»
 DELETE FROM STORE_STOCK
 WHERE product_id = (SELECT product_id FROM PRODUCTS WHERE name = 'Кофе «Вдохновение»');
 
@@ -336,7 +352,7 @@ WHERE product_id = (SELECT product_id FROM PRODUCTS WHERE name = 'Кофе «В�
 DELETE FROM PRODUCTS
 WHERE name = 'Кофе «Вдохновение»';
 
--- Поставщики, поднявшие цену более чем на 50 руб. за последний год.
+-- Поставщики, поднявшие цену более чем на 50 руб за последний год
 SELECT supplier.name, product.name, older.price AS old_price, newer.price AS new_price,
        newer.price - older.price AS price_delta
 FROM PRODUCT_PRICE_HISTORY older
@@ -349,18 +365,18 @@ JOIN PRODUCTS product ON product.product_id = newer.product_id
 WHERE newer.valid_from >= CURRENT_DATE - INTERVAL '1 year'
   AND newer.price - older.price > 50;
 
--- Товары, срок годности которых истекает в декабре 2005 года.
+-- Товары, срок годности которых истекает в декабре 2005 года
 SELECT product.name, supply.expiry_date, supply.document_number
 FROM SUPPLIES supply
 JOIN PRODUCTS product ON product.product_id = supply.product_id
 WHERE supply.expiry_date >= DATE '2005-12-01'
   AND supply.expiry_date < DATE '2006-01-01';
 
--- Новый магазин.
+-- Новый магазин
 INSERT INTO STORES (store_id, name, address, phone, email) VALUES
     (2, 'Магазин «Левобережный»', 'г. Омск, ул. Дианова, 15', '+7-3812-20-20-20', 'left@store.ru');
 
--- Свои запросы: товары ниже плана на складе; заказы клиента со скидкой.
+-- Свои запросы: товары ниже плана на складе; заказы клиента со скидкой
 SELECT product.name, stock.quantity AS fact_qty, plan.plan_qty,
        plan.plan_qty - stock.quantity AS below_plan
 FROM PRODUCTS product
