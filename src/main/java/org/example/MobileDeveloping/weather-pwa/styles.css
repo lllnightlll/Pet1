@@ -1,0 +1,14 @@
+/* Индикатор сети: зелёный онлайн, красный офлайн. */
+#network-status {
+    display: inline-block;
+    padding: 4px 10px;
+    color: #fff;
+}
+
+#network-status.network-online {
+    background-color: #2e7d32;
+}
+
+#network-status.network-offline {
+    background-color: #c62828;
+}
