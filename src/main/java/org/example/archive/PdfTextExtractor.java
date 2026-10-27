@@ -16,11 +16,16 @@ public class PdfTextExtractor {
     private static final byte[] STREAM_MARK = "stream".getBytes(StandardCharsets.ISO_8859_1);
     private static final byte[] END_STREAM_MARK = "endstream".getBytes(StandardCharsets.ISO_8859_1);
 
+    /**
+     * Имена шрифтов в этом PDF: F1, F2, F3 (WinAnsi) и F1+1, F2+1, F3+1 (ToUnicode).
+     */
     private static final Pattern FONT_NAME_AND_BASE = Pattern.compile(
-            "/Name /(F\\d+\\+\\d)\\s*/BaseFont /([^/\\s\\r\\n]+)");
+            "/Name /(F\\d+(?:\\+\\d+)?)\\s*/BaseFont /([^/\\s\\r\\n]+)");
     private static final Pattern CMAP_NAME = Pattern.compile("/CMapName //([^\\s]+)\\s+def");
+    private static final Pattern BF_CHAR_BLOCK = Pattern.compile(
+            "beginbfchar(.*?)endbfchar", Pattern.DOTALL);
     private static final Pattern BF_CHAR = Pattern.compile("<([0-9A-Fa-f]+)>\\s*<([0-9A-Fa-f]+)>");
-    private static final Pattern FONT_SELECT = Pattern.compile("/(F\\d+\\+\\d)\\s+[0-9.]+\\s+Tf");
+    private static final Pattern FONT_SELECT = Pattern.compile("/(F\\d+(?:\\+\\d+)?)\\s+[0-9.]+\\s+Tf");
 
     public String extract(Path pdfPath) throws IOException {
         byte[] pdf = Files.readAllBytes(pdfPath);
@@ -47,56 +52,70 @@ public class PdfTextExtractor {
             from = endAt + END_STREAM_MARK.length;
         }
 
-        Map<String, Map<Integer, Integer>> cmapsByFontName = bindFontsToCmaps(pdf, cmapsByBaseFont);
-        return collectPageText(pages.toString(), cmapsByFontName);
+        Map<String, PdfFontEncoding> encodingsByFontName = bindFonts(pdf, cmapsByBaseFont);
+        return collectPageText(pages.toString(), encodingsByFontName);
     }
 
-    private Map<String, Map<Integer, Integer>> bindFontsToCmaps(
+    /**
+     * Связывает имя оператора Tf (F1, F1+1, …) с кодировкой.
+     * Шрифт без ToUnicode читаем как WinAnsi, иначе байт 0x20 у F1
+     * продолжит декодироваться таблицей F1+1 и превратится в «и».
+     */
+    private Map<String, PdfFontEncoding> bindFonts(
             byte[] pdf,
             Map<String, Map<Integer, Integer>> cmapsByBaseFont
     ) {
         String ascii = new String(pdf, StandardCharsets.ISO_8859_1);
-        Map<String, Map<Integer, Integer>> byFont = new HashMap<>();
+        Map<String, PdfFontEncoding> byFont = new HashMap<>();
         Matcher matcher = FONT_NAME_AND_BASE.matcher(ascii);
         while (matcher.find()) {
             String fontName = matcher.group(1);
             String baseFont = matcher.group(2);
             Map<Integer, Integer> cmap = cmapsByBaseFont.get(baseFont);
             if (cmap != null) {
-                byFont.put(fontName, cmap);
+                byFont.put(fontName, PdfFontEncoding.fromToUnicode(cmap));
+            } else {
+                byFont.put(fontName, PdfFontEncoding.winAnsi());
             }
         }
         if (byFont.isEmpty() && !cmapsByBaseFont.isEmpty()) {
-            byFont.put("F1+1", cmapsByBaseFont.values().iterator().next());
+            byFont.put("F1+1", PdfFontEncoding.fromToUnicode(cmapsByBaseFont.values().iterator().next()));
         }
         return byFont;
     }
 
+    /**
+     * Читает только beginbfchar…endbfchar, не codespacerange (иначе пара границ
+     * диапазона попадёт в таблицу как ложный символ).
+     */
     private void parseCmap(String cmapText, Map<String, Map<Integer, Integer>> cmapsByBaseFont) {
         Matcher nameMatcher = CMAP_NAME.matcher(cmapText);
         String baseFont = nameMatcher.find() ? nameMatcher.group(1) : "unknown";
         Map<Integer, Integer> map = new HashMap<>();
-        Matcher bf = BF_CHAR.matcher(cmapText);
-        while (bf.find()) {
-            int src = Integer.parseInt(bf.group(1), 16);
-            int dst = Integer.parseInt(bf.group(2), 16);
-            map.put(src, dst);
+        Matcher block = BF_CHAR_BLOCK.matcher(cmapText);
+        while (block.find()) {
+            Matcher bf = BF_CHAR.matcher(block.group(1));
+            while (bf.find()) {
+                int src = Integer.parseInt(bf.group(1), 16);
+                int dst = Integer.parseInt(bf.group(2), 16);
+                map.put(src, dst);
+            }
         }
         cmapsByBaseFont.put(baseFont, map);
     }
 
-    private String collectPageText(String allContent, Map<String, Map<Integer, Integer>> cmapsByFontName) {
+    private String collectPageText(String allContent, Map<String, PdfFontEncoding> encodingsByFontName) {
         StringBuilder text = new StringBuilder();
-        Map<Integer, Integer> currentCmap = defaultCmap(cmapsByFontName);
+        PdfFontEncoding current = defaultEncoding(encodingsByFontName);
         Matcher fontSelector = FONT_SELECT.matcher(allContent);
         int i = 0;
         while (i < allContent.length()) {
             if (allContent.charAt(i) == '/') {
                 fontSelector.region(i, allContent.length());
                 if (fontSelector.lookingAt()) {
-                    Map<Integer, Integer> next = cmapsByFontName.get(fontSelector.group(1));
+                    PdfFontEncoding next = encodingsByFontName.get(fontSelector.group(1));
                     if (next != null) {
-                        currentCmap = next;
+                        current = next;
                     }
                     i = fontSelector.end();
                     continue;
@@ -108,7 +127,7 @@ public class PdfTextExtractor {
                 if (startsWith(allContent, after, "Tj")
                         || startsWith(allContent, after, "'")
                         || startsWith(allContent, after, "\"")) {
-                    text.append(mapBytes(parsed.rawBytes, currentCmap));
+                    text.append(mapBytes(parsed.rawBytes, current));
                     if (startsWith(allContent, after, "'") || startsWith(allContent, after, "\"")) {
                         text.append('\n');
                     }
@@ -121,7 +140,7 @@ public class PdfTextExtractor {
                 if (close > i) {
                     int after = skipSpacesIndex(allContent, close + 1);
                     if (startsWith(allContent, after, "TJ")) {
-                        text.append(collectFromArray(allContent.substring(i + 1, close), currentCmap));
+                        text.append(collectFromArray(allContent.substring(i + 1, close), current));
                     }
                     i = close;
                     continue;
@@ -135,24 +154,24 @@ public class PdfTextExtractor {
         return text.toString();
     }
 
-    private Map<Integer, Integer> defaultCmap(Map<String, Map<Integer, Integer>> cmapsByFontName) {
-        Map<Integer, Integer> regular = cmapsByFontName.get("F1+1");
+    private PdfFontEncoding defaultEncoding(Map<String, PdfFontEncoding> encodingsByFontName) {
+        PdfFontEncoding regular = encodingsByFontName.get("F1+1");
         if (regular != null) {
             return regular;
         }
-        if (!cmapsByFontName.isEmpty()) {
-            return cmapsByFontName.values().iterator().next();
+        if (!encodingsByFontName.isEmpty()) {
+            return encodingsByFontName.values().iterator().next();
         }
-        return Map.of();
+        return PdfFontEncoding.winAnsi();
     }
 
-    private String collectFromArray(String arrayBody, Map<Integer, Integer> cmap) {
+    private String collectFromArray(String arrayBody, PdfFontEncoding encoding) {
         StringBuilder text = new StringBuilder();
         int i = 0;
         while (i < arrayBody.length()) {
             if (arrayBody.charAt(i) == '(') {
                 PdfString parsed = readPdfString(arrayBody, i);
-                text.append(mapBytes(parsed.rawBytes, cmap));
+                text.append(mapBytes(parsed.rawBytes, encoding));
                 i = parsed.endIndex;
                 continue;
             }
@@ -199,52 +218,20 @@ public class PdfTextExtractor {
         return -1;
     }
 
-    private String mapBytes(byte[] rawBytes, Map<Integer, Integer> cmap) {
+    /**
+     * Декодирует байты PDF-строки текущей кодировкой шрифта.
+     * Раньше одиночный 0x20 всегда становился «и» — из-за этого книга
+     * превращалась в «иииипсихолоиияинародов».
+     */
+    private String mapBytes(byte[] rawBytes, PdfFontEncoding encoding) {
         StringBuilder mapped = new StringBuilder();
-        for (int index = 0; index < rawBytes.length; index++) {
-            int code = rawBytes[index] & 0xFF;
-            if (code == 0x20) {
-                int run = 1;
-                while (index + run < rawBytes.length && (rawBytes[index + run] & 0xFF) == 0x20) {
-                    run++;
-                }
-                if (run >= 2) {
-                    mapped.append(' ');
-                } else {
-                    mapped.append('и');
-                }
-                index += run - 1;
-                continue;
-            }
-            Integer unicode = cmap.get(code);
-            if (unicode != null) {
-                char mappedChar = (char) unicode.intValue();
-                // Греческие «Π» на месте точки — это битый CMap, оставляем ASCII.
-                if (isGreek(mappedChar) && code < 127) {
-                    mapped.append((char) code);
-                } else if (isAsciiPunctuation(code) && !isCyrillic(mappedChar)) {
-                    mapped.append((char) code);
-                } else {
-                    mapped.append(mappedChar);
-                }
-            } else if (code >= 32 && code < 127) {
-                mapped.append((char) code);
+        for (byte rawByte : rawBytes) {
+            char decoded = encoding.decode(rawByte & 0xFF);
+            if (decoded != 0) {
+                mapped.append(decoded);
             }
         }
         return mapped.toString();
-    }
-
-    private boolean isGreek(char ch) {
-        Character.UnicodeBlock block = Character.UnicodeBlock.of(ch);
-        return block == Character.UnicodeBlock.GREEK || block == Character.UnicodeBlock.GREEK_EXTENDED;
-    }
-
-    private boolean isCyrillic(char ch) {
-        return Character.UnicodeBlock.of(ch) == Character.UnicodeBlock.CYRILLIC;
-    }
-
-    private boolean isAsciiPunctuation(int code) {
-        return code < 127 && !Character.isLetterOrDigit(code) && !Character.isWhitespace(code);
     }
 
     @SuppressWarnings("resource")

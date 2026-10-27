@@ -147,10 +147,8 @@ public class FrequencyTable {
             return null;
         }
         char symbol = (char) cp;
-        if (symbol == '\u00A0') {
-            return ' ';
-        }
-        if (symbol == ' ') {
+        if (symbol == '\u00A0' || symbol == ' ' || symbol == '\n' || symbol == '\r' || symbol == '\t') {
+            // Перенос строки в PDF — граница слова; иначе «идеи»+«равенства» слипаются.
             return ' ';
         }
         if (Character.isLetter(symbol)) {

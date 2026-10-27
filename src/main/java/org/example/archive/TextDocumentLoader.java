@@ -34,7 +34,9 @@ public class TextDocumentLoader {
         String[] parts = raw.split("\\R", -1);
         List<String> lines = new ArrayList<>();
         for (String part : parts) {
-            String trimmed = part.strip();
+            // Пустые Td-сдвиги вёрстки дают пачки пробелов; для частоты и отчётов
+            // оставляем один пробел между словами.
+            String trimmed = part.strip().replaceAll("\\s+", " ");
             if (trimmed.isEmpty()) {
                 continue;
             }
