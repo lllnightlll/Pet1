@@ -5,17 +5,16 @@ import java.nio.file.Paths;
 
 public final class ArchiveSettings {
     public static final int MAX_TEXT_LINES = 8_000;
-    public static final int PROBABILITY_BINARY_BITS = 24;
+    /** В таблицу Хаффмана не попадают символы, встретившиеся реже этого порога. */
+    public static final int HUFFMAN_MIN_SYMBOL_COUNT = 10;
     public static final int ARITHMETIC_PRECISION_BITS = 48;
     public static final int ARITHMETIC_SAMPLE_LENGTH = 400;
-    public static final int LZ_SAMPLE_LENGTH = 2_000;
 
     private final Path workDirectory;
     private final Path sourcePdf;
     private final Path extractedTextFile;
     private final Path frequencyReportFile;
     private final Path arithmeticReportFile;
-    private final Path lempelZivReportFile;
 
     public ArchiveSettings(Path workDirectory) {
         this.workDirectory = workDirectory;
@@ -23,7 +22,6 @@ public final class ArchiveSettings {
         this.extractedTextFile = workDirectory.resolve("extracted-text.txt");
         this.frequencyReportFile = workDirectory.resolve("frequency-huffman.txt");
         this.arithmeticReportFile = workDirectory.resolve("arithmetic-coding.txt");
-        this.lempelZivReportFile = workDirectory.resolve("lempel-ziv.txt");
     }
 
     public static ArchiveSettings fromCodeLocation() {
@@ -49,9 +47,5 @@ public final class ArchiveSettings {
 
     public Path arithmeticReportFile() {
         return arithmeticReportFile;
-    }
-
-    public Path lempelZivReportFile() {
-        return lempelZivReportFile;
     }
 }

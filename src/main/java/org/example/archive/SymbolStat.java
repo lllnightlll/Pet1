@@ -6,14 +6,12 @@ public final class SymbolStat {
     private final long count;
     private final double probability;
     private String huffmanCode;
-    private String probabilityBinary;
 
     public SymbolStat(char letter, long count, double probability) {
         this.letter = letter;
         this.count = count;
         this.probability = probability;
         this.huffmanCode = "";
-        this.probabilityBinary = "";
     }
 
     public char letter() {
@@ -44,12 +42,11 @@ public final class SymbolStat {
         return huffmanCode.length();
     }
 
-    public String probabilityBinary() {
-        return probabilityBinary;
-    }
-
-    public void setProbabilityBinary(String probabilityBinary) {
-        this.probabilityBinary = probabilityBinary;
+    /**
+     * Вклад символа в среднюю длину кода: (Процент / 100) * Длина = p_i * l_i.
+     */
+    public double lengthContribution() {
+        return probability * huffmanLength();
     }
 
     /**

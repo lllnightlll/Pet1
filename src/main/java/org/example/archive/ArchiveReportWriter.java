@@ -4,11 +4,10 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.List;
 import java.util.Locale;
 
 /**
- * Пишет три текстовых отчёта лабораторной: частоты+Хаффман, арифметика, LZ78.
+ * Пишет отчёты лабораторной: частоты+Хаффман и арифметическое кодирование.
  */
 public class ArchiveReportWriter {
 
@@ -36,20 +35,29 @@ public class ArchiveReportWriter {
             writer.newLine();
             writer.write("Сортировка: от более редких букв к более частым");
             writer.newLine();
+            writer.write("Символы с числом вхождений меньше "
+                    + ArchiveSettings.HUFFMAN_MIN_SYMBOL_COUNT
+                    + " в таблицу не входят.");
             writer.newLine();
-            writer.write(String.format("%-4s %-12s %-12s %-12s %-24s %-8s %-30s",
-                    "№", "Символ", "Сколько", "Процент", "Код_Хаффмана", "Длина", "P_в_двоичном(×2)"));
+            writer.write("Столбец Средняя длина = (Процент/100)*Длина — вклад буквы в среднюю длину L.");
+            writer.newLine();
+            writer.newLine();
+            writer.write(String.format("%-4s %-12s %-12s %-12s %-24s %-8s %-14s",
+                    "№", "Символ", "Сколько", "Процент", "Код_Хаффмана", "Длина", "Средняя длина"));
             writer.newLine();
             int rank = 1;
             for (SymbolStat stat : table.stats()) {
-                writer.write(String.format(Locale.US, "%-4d %-12s %-12d %-12s %-24s %-8d %-30s",
+                if (stat.count() < ArchiveSettings.HUFFMAN_MIN_SYMBOL_COUNT) {
+                    continue;
+                }
+                writer.write(String.format(Locale.US, "%-4d %-12s %-12d %-12s %-24s %-8d %-14s",
                         rank,
                         stat.letterDisplay(),
                         stat.count(),
                         table.formatPercent(stat.percent()) + "%",
                         stat.huffmanCode(),
                         stat.huffmanLength(),
-                        stat.probabilityBinary()));
+                        table.formatPercent(stat.lengthContribution())));
                 writer.newLine();
                 rank++;
             }
@@ -60,8 +68,7 @@ public class ArchiveReportWriter {
             FrequencyTable table,
             String sample,
             ArithmeticRangeCodec.EncodeResult encoded,
-            String decoded,
-            String fractionTrace
+            String decoded
     ) throws IOException {
         try (BufferedWriter writer = Files.newBufferedWriter(settings.arithmeticReportFile(), StandardCharsets.UTF_8)) {
             writer.write("Арифметическое кодирование (формулы с доски, 48-бит LO/HI)");
@@ -86,10 +93,6 @@ public class ArchiveReportWriter {
                 writer.newLine();
             }
             writer.newLine();
-            writer.write("Пример перевода вероятности в двоичную дробь (метод ×2), как 0.073 на доске:");
-            writer.newLine();
-            writer.write(fractionTrace);
-            writer.newLine();
             writer.write("Фрагмент текста (" + sample.length() + " букв):");
             writer.newLine();
             writer.write(sample);
@@ -106,7 +109,9 @@ public class ArchiveReportWriter {
             writer.newLine();
             writer.write(String.format(Locale.US, "Бит на букву: %.6f", encoded.bitsPerLetter()));
             writer.newLine();
-            writer.write("Код (префикс): " + prefix(encoded.bits(), 160));
+            writer.write("Код (все " + encoded.bits().length() + " бит):");
+            writer.newLine();
+            writeWrapped(writer, encoded.bits(), 80);
             writer.newLine();
             writer.write("Декодирование совпало: " + sample.equals(decoded));
             writer.newLine();
@@ -119,49 +124,17 @@ public class ArchiveReportWriter {
         }
     }
 
-    public void writeLempelZivReport(
-            String sample,
-            LempelZiv78Codec.EncodeResult encoded,
-            String decoded,
-            int estimatedBits
-    ) throws IOException {
-        try (BufferedWriter writer = Files.newBufferedWriter(settings.lempelZivReportFile(), StandardCharsets.UTF_8)) {
-            writer.write("Словарный алгоритм Лемпеля–Зива LZ78");
+    /**
+     * Пишет длинную битовую строку по строкам фиксированной ширины,
+     * чтобы отчёт можно было открыть в редакторе.
+     */
+    private void writeWrapped(BufferedWriter writer, String bits, int width) throws IOException {
+        int from = 0;
+        while (from < bits.length()) {
+            int to = Math.min(bits.length(), from + width);
+            writer.write(bits.substring(from, to));
             writer.newLine();
-            writer.write("Словарь растёт: новая фраза = уже известный префикс + следующий символ.");
-            writer.newLine();
-            writer.write("Выход — пары (индекс_в_словаре, новый_символ).");
-            writer.newLine();
-            writer.newLine();
-            writer.write("Фрагмент (" + sample.length() + " букв):");
-            writer.newLine();
-            writer.write(sample);
-            writer.newLine();
-            writer.newLine();
-            writer.write("Размер словаря: " + encoded.dictionarySize());
-            writer.newLine();
-            writer.write("Число токенов: " + encoded.tokens().size());
-            writer.newLine();
-            writer.write("Оценка длины кода: " + estimatedBits + " бит");
-            writer.newLine();
-            writer.write("Декодирование совпало: " + sample.equals(decoded));
-            writer.newLine();
-            writer.newLine();
-            writer.write("Первые 40 токенов:");
-            writer.newLine();
-            List<LempelZiv78Codec.Token> tokens = encoded.tokens();
-            int limit = Math.min(40, tokens.size());
-            for (int i = 0; i < limit; i++) {
-                writer.write("  " + tokens.get(i).toString());
-                writer.newLine();
-            }
+            from = to;
         }
-    }
-
-    private String prefix(String bits, int max) {
-        if (bits.length() <= max) {
-            return bits;
-        }
-        return bits.substring(0, max) + "...";
     }
 }
