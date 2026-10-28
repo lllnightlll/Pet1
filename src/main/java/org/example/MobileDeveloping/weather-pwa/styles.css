@@ -12,3 +12,46 @@
 #network-status.network-offline {
     background-color: #c62828;
 }
+
+#camera-video,
+#photo-preview {
+    display: block;
+    max-width: 320px;
+    margin-top: 8px;
+}
+
+#camera-canvas {
+    display: none;
+}
+
+.is-hidden {
+    display: none !important;
+}
+
+#weather-card {
+    min-height: 4em;
+}
+
+#geo-foreground-warning {
+    color: #b26a00;
+    max-width: 28em;
+}
+
+#pickme-result {
+    font-size: 1.4em;
+    font-weight: 700;
+    margin-top: 4px;
+}
+
+#weather-card.is-shuffling {
+    animation: weather-shuffle 0.6s ease;
+}
+
+@keyframes weather-shuffle {
+    0% { transform: translateX(0) rotate(0deg); }
+    20% { transform: translateX(-12px) rotate(-3deg); }
+    40% { transform: translateX(12px) rotate(3deg); }
+    60% { transform: translateX(-8px) rotate(-2deg); }
+    80% { transform: translateX(8px) rotate(2deg); }
+    100% { transform: translateX(0) rotate(0deg); }
+}

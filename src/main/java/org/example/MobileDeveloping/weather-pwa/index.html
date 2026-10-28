@@ -6,6 +6,7 @@
     <title>Weather</title>
     <link rel="stylesheet" href="/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/dist/face-api.min.js"></script>
 </head>
 <body>
     <h1>Weather</h1>
@@ -15,14 +16,35 @@
         <label for="city-input">City</label>
         <input id="city-input" name="city" type="text" placeholder="London" required>
         <button type="submit">Show</button>
+        <button type="button" id="locate-button" aria-label="Current location">📍</button>
     </form>
 
-    <p id="place"></p>
-    <p id="temperature"></p>
-    <p id="cache-warning"></p>
+    <div id="weather-card">
+        <p id="place"></p>
+        <p id="temperature"></p>
+        <p id="cache-warning"></p>
+        <p id="geo-foreground-warning"></p>
+    </div>
 
-    <script src="/js/storage.js?v=9"></script>
-    <script src="/js/network.js?v=9"></script>
-    <script src="/js/app.js?v=9"></script>
+    <button type="button" id="photo-button">Сделать фото</button>
+    <button type="button" id="capture-button" class="is-hidden">Захватить</button>
+    <video id="camera-video" class="is-hidden" autoplay playsinline muted></video>
+    <canvas id="camera-canvas" class="is-hidden"></canvas>
+    <img id="photo-preview" class="is-hidden" alt="Captured photo">
+    <button type="button" id="photo-send-button" class="is-hidden">Отправить</button>
+    <p id="photo-size"></p>
+    <p id="pickme-result"></p>
+
+    <button type="button" id="shake-button">Встряхнуть</button>
+    <button type="button" id="shake-stop-button">Остановить игру</button>
+    <p id="shake-count"></p>
+    <p id="shake-status"></p>
+
+    <script src="/js/storage.js?v=16"></script>
+    <script src="/js/network.js?v=16"></script>
+    <script src="/js/pickme.js?v=16"></script>
+    <script src="/js/camera.js?v=16"></script>
+    <script src="/js/motion.js?v=16"></script>
+    <script src="/js/app.js?v=16"></script>
 </body>
 </html>

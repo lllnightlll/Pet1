@@ -110,3 +110,103 @@ async function getLastWeatherFromCache() {
         return null;
     }
 }
+
+/**
+ * Последние координаты геолокации — fallback, когда сети нет.
+ * localStorage синхронный: 📍 может показать кэш сразу, без IndexedDB.
+ */
+class LastKnownGeoStorage {
+    /**
+     * @param {string} storageKey
+     */
+    constructor(storageKey) {
+        this.storageKey = storageKey;
+    }
+
+    /**
+     * @param {{latitude: number, longitude: number, name: string, temperature: number}} snapshot
+     */
+    save(snapshot) {
+        localStorage.setItem(this.storageKey, JSON.stringify(snapshot));
+    }
+
+    /**
+     * @returns {{latitude: number, longitude: number, name: string, temperature: number}|null}
+     */
+    load() {
+        const raw = localStorage.getItem(this.storageKey);
+        if (!raw) {
+            return null;
+        }
+
+        try {
+            return JSON.parse(raw);
+        } catch (error) {
+            return null;
+        }
+    }
+}
+
+const lastKnownGeoStorage = new LastKnownGeoStorage('weather-pwa:last-geo');
+
+/**
+ * @param {{latitude: number, longitude: number, name: string, temperature: number}} snapshot
+ */
+function saveLastKnownGeo(snapshot) {
+    try {
+        lastKnownGeoStorage.save(snapshot);
+    } catch (err) {
+        console.error('Ошибка сохранения координат:', err);
+    }
+}
+
+/**
+ * @returns {{latitude: number, longitude: number, name: string, temperature: number}|null}
+ */
+function getLastKnownGeo() {
+    try {
+        return lastKnownGeoStorage.load();
+    } catch (err) {
+        return null;
+    }
+}
+
+/**
+ * Сжатые фото в отдельном store той же IndexedDB weather-pwa.
+ */
+class PhotoIndexedDbStore {
+    constructor() {
+        this.photoStore = localforage.createInstance({
+            name: 'weather-pwa',
+            storeName: 'photos'
+        });
+    }
+
+    /**
+     * @param {string} dataUrl
+     * @returns {Promise<string>} ключ записи
+     */
+    async save(dataUrl) {
+        const photoId = `photo-${Date.now()}`;
+        await this.photoStore.setItem(photoId, {
+            dataUrl: dataUrl,
+            timestamp: Date.now()
+        });
+        return photoId;
+    }
+}
+
+const photoStore = new PhotoIndexedDbStore();
+
+/**
+ * «Отправка» фото = запись dataURL в IndexedDB.
+ * @param {string} dataUrl
+ */
+async function savePhotoToIndexedDb(dataUrl) {
+    try {
+        return await photoStore.save(dataUrl);
+    } catch (err) {
+        console.error('Ошибка сохранения фото:', err);
+        return null;
+    }
+}
