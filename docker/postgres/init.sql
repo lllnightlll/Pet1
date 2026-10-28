@@ -284,35 +284,14 @@ INSERT INTO MOVEMENTS (movement_id, product_id, store_id, movement_type, quantit
 INSERT INTO ORDER_ITEMS (order_id, product_id, quantity, price, discount_pct) VALUES
     (1, 1, 20.00, 45.50, 5.00);
 
--- Суммарные излишки и недостача
+-- Суммарные излишки и недостача по складу:
 SELECT
-    COALESCE(SUM(CASE
-        WHEN supply_totals.supplied_qty > plan.plan_qty
-            THEN supply_totals.supplied_qty - plan.plan_qty
-        ELSE 0
-    END), 0) AS surplus_vs_plan,
-    COALESCE(SUM(CASE
-        WHEN supply_totals.supplied_qty < plan.plan_qty
-            THEN plan.plan_qty - supply_totals.supplied_qty
-        ELSE 0
-    END), 0) AS shortage_vs_plan,
-    COALESCE(SUM(CASE
-        WHEN supply_totals.supplied_qty > stock.quantity
-            THEN supply_totals.supplied_qty - stock.quantity
-        ELSE 0
-    END), 0) AS surplus_vs_warehouse,
-    COALESCE(SUM(CASE
-        WHEN supply_totals.supplied_qty < stock.quantity
-            THEN stock.quantity - supply_totals.supplied_qty
-        ELSE 0
-    END), 0) AS shortage_vs_warehouse
+    SUM(stock.quantity - supply_totals.supplied_qty) AS warehouse_delta
 FROM (
-    -- Несколько накладных по одному товару сводим в одну величину прихода.
     SELECT product_id, SUM(quantity) AS supplied_qty
     FROM SUPPLIES
     GROUP BY product_id
 ) supply_totals
-JOIN PLAN_STOCK plan ON plan.product_id = supply_totals.product_id
 JOIN WAREHOUSE_STOCK stock ON stock.product_id = supply_totals.product_id
 JOIN PRODUCTS product ON product.product_id = supply_totals.product_id
 JOIN CATEGORIES category ON category.category_id = product.category_id
@@ -384,10 +363,8 @@ JOIN WAREHOUSE_STOCK stock ON stock.product_id = product.product_id
 JOIN PLAN_STOCK plan ON plan.product_id = product.product_id
 WHERE stock.quantity < plan.plan_qty;
 
-SELECT customer.name, orders.order_id, orders.order_date, orders.total_sum,
-       rules.discount_pct
+SELECT customer.name, orders.order_id, orders.order_date, orders.total_sum, rules.discount_pct
 FROM CUSTOMERS customer
 JOIN ORDERS orders ON orders.customer_id = customer.customer_id
 JOIN DISCOUNT_RULES rules ON rules.customer_id = customer.customer_id
 WHERE rules.is_active = TRUE;
-
