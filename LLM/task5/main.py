@@ -35,7 +35,7 @@ news = pd.DataFrame(stuff2["data"])
 page2.close()
 
 data["date"] = pd.to_datetime(data["date"], unit="s").dt.normalize()
-news["date"] = pd.to_datetime(news["timestamp"], unit="s").dt.normalize()
+news["date"] = pd.to_datetime(news["timestamp"].astype(int), unit="s").dt.normalize()
 news = news[["date", "value"]]
 
 df = data.merge(news, on="date", how="left")
@@ -64,24 +64,6 @@ print("test MAE", mean_absolute_error(y_test, pred), "RMSE", mean_squared_error(
 
 print("коэфы:", list(zip(x.columns, model.coef_)))
 print("intercept:", model.intercept_)
-print("open high low volume value izm")
-while True:
-    line = input(" > ").strip()
-    if not line:
-        break
-    try:
-        nums = [float(t.replace(",", ".")) for t in line.split()]
-    except ValueError:
-        continue
-    if len(nums) == 1 and nums[0].is_integer() and 0 <= int(nums[0]) < len(df):
-        i = int(nums[0])
-        row = StandardScaler().transform([x.iloc[i]])
-        print("настоящий close", float(y.iloc[i]))
-        print("прогноз", float(model.predict(row)[0]))
-    elif len(nums) == 6:
-        print("прогноз", float(model.predict(StandardScaler().transform([nums]))[0]))
-    else:
-        print("надо 6 чисел или номер")
 
 out = Path(__file__).resolve().parent
 fig, ax = plt.subplots(2, 2, figsize=(12, 8))
