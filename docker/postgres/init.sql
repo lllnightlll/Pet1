@@ -284,23 +284,17 @@ INSERT INTO MOVEMENTS (movement_id, product_id, store_id, movement_type, quantit
 INSERT INTO ORDER_ITEMS (order_id, product_id, quantity, price, discount_pct) VALUES
     (1, 1, 20.00, 45.50, 5.00);
 
--- Суммарные излишки и недостача по складу:
+-- Излишки и недостача по складу: по каждому товару (факт минус сумма поставок).
 SELECT
-    SUM(stock.quantity - supply_totals.supplied_qty) AS warehouse_delta
-FROM (
+    product.name,
+    COALESCE(stock.quantity, 0) - COALESCE(supply_totals.supplied_qty, 0) AS warehouse_delta
+FROM PRODUCTS product
+LEFT JOIN WAREHOUSE_STOCK stock ON stock.product_id = product.product_id
+LEFT JOIN (
     SELECT product_id, SUM(quantity) AS supplied_qty
     FROM SUPPLIES
     GROUP BY product_id
-) supply_totals
-JOIN WAREHOUSE_STOCK stock ON stock.product_id = supply_totals.product_id
-JOIN PRODUCTS product ON product.product_id = supply_totals.product_id
-JOIN CATEGORIES category ON category.category_id = product.category_id
-WHERE category.category_id IN (
-        SELECT category_id
-        FROM CATEGORIES
-        WHERE category_id = 1
-           OR parent_id = 1
-    );
+) supply_totals ON supply_totals.product_id = product.product_id;
 
 -- Адрес предприятия, поставившего печенье «Юбилейное»
 SELECT DISTINCT supplier.name, supplier.address
