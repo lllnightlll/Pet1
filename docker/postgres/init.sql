@@ -362,3 +362,148 @@ FROM CUSTOMERS customer
 JOIN ORDERS orders ON orders.customer_id = customer.customer_id
 JOIN DISCOUNT_RULES rules ON rules.customer_id = customer.customer_id
 WHERE rules.is_active = TRUE;
+
+
+
+-- Снимок отчёта по клиентам
+CREATE TABLE IF NOT EXISTS CUSTOMER_PURCHASE_REPORTS (
+    customer_id INT PRIMARY KEY
+        REFERENCES CUSTOMERS (customer_id) ON DELETE RESTRICT,
+    customer_name VARCHAR(255) NOT NULL,
+    orders_count INT NOT NULL DEFAULT 0,
+    total_purchases DECIMAL(12, 2) NOT NULL DEFAULT 0,
+    avg_order_sum DECIMAL(12, 2) NOT NULL DEFAULT 0,
+    first_order_date DATE,
+    last_order_date DATE,
+    generated_at TIMESTAMP NOT NULL DEFAULT now()
+);
+
+-- Отчёт: история покупок каждого клиента.
+CREATE OR REPLACE PROCEDURE build_customer_purchase_report()
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    DELETE FROM CUSTOMER_PURCHASE_REPORTS;
+
+    INSERT INTO CUSTOMER_PURCHASE_REPORTS (
+        customer_id,
+        customer_name,
+        orders_count,
+        total_purchases,
+        avg_order_sum,
+        first_order_date,
+        last_order_date,
+        generated_at
+    )
+    SELECT
+        customer.customer_id,
+        customer.name,
+        COUNT(orders.order_id),
+        COALESCE(SUM(orders.total_sum), 0),
+        COALESCE(AVG(orders.total_sum), 0),
+        MIN(orders.order_date),
+        MAX(orders.order_date),
+        now()
+    FROM CUSTOMERS customer
+    LEFT JOIN ORDERS orders ON orders.customer_id = customer.customer_id
+    GROUP BY customer.customer_id, customer.name;
+END;
+$$;
+
+-- Скидка одного покупателя: история покупок ИЛИ сумма текущего заказа (берётся большая).
+-- CALL recalc_customer_discounts(1);                 -- только история клиента 1
+-- CALL recalc_customer_discounts(1, p_order_id => 1); -- история без заказа 1 + этот заказ
+CREATE OR REPLACE PROCEDURE recalc_customer_discounts(
+    p_customer_id INT,
+    p_order_id INT DEFAULT NULL,
+    history_mid DECIMAL DEFAULT 300,
+    history_high DECIMAL DEFAULT 1000,
+    order_mid DECIMAL DEFAULT 200,
+    order_high DECIMAL DEFAULT 500,
+    pct_mid DECIMAL DEFAULT 5,
+    pct_high DECIMAL DEFAULT 10
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    history_sum DECIMAL(12, 2);
+    current_order_sum DECIMAL(12, 2);
+    history_pct DECIMAL(10, 2);
+    order_pct DECIMAL(10, 2);
+    new_pct DECIMAL(10, 2);
+    next_rule_id INT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM CUSTOMERS WHERE customer_id = p_customer_id) THEN
+        RAISE EXCEPTION 'Клиент % не найден', p_customer_id;
+    END IF;
+
+    IF p_order_id IS NOT NULL AND NOT EXISTS (
+        SELECT 1
+        FROM ORDERS
+        WHERE order_id = p_order_id
+          AND customer_id = p_customer_id
+    ) THEN
+        RAISE EXCEPTION 'Заказ % не принадлежит клиенту %', p_order_id, p_customer_id;
+    END IF;
+
+    SELECT COALESCE(SUM(orders.total_sum), 0)
+    INTO history_sum
+    FROM ORDERS orders
+    WHERE orders.customer_id = p_customer_id
+      AND (p_order_id IS NULL OR orders.order_id IS DISTINCT FROM p_order_id);
+
+    IF p_order_id IS NULL THEN
+        current_order_sum := 0;
+    ELSE
+        SELECT total_sum INTO current_order_sum
+        FROM ORDERS
+        WHERE order_id = p_order_id;
+    END IF;
+
+    history_pct := 0;
+    IF history_sum >= history_high THEN
+        history_pct := pct_high;
+    ELSIF history_sum >= history_mid THEN
+        history_pct := pct_mid;
+    END IF;
+
+    order_pct := 0;
+    IF current_order_sum >= order_high THEN
+        order_pct := pct_high;
+    ELSIF current_order_sum >= order_mid THEN
+        order_pct := pct_mid;
+    END IF;
+
+    new_pct := GREATEST(history_pct, order_pct);
+
+    UPDATE DISCOUNT_RULES
+    SET
+        discount_pct = new_pct,
+        is_active = TRUE,
+        valid_from = CURRENT_DATE
+    WHERE customer_id = p_customer_id;
+
+    IF NOT FOUND THEN
+        SELECT COALESCE(MAX(rule_id), 0) + 1 INTO next_rule_id
+        FROM DISCOUNT_RULES;
+
+        INSERT INTO DISCOUNT_RULES (
+            rule_id, customer_id, discount_pct, valid_from, valid_to, is_active
+        ) VALUES (
+            next_rule_id, p_customer_id, new_pct, CURRENT_DATE, NULL, TRUE
+        );
+    END IF;
+
+    IF p_order_id IS NOT NULL THEN
+        UPDATE ORDERS
+        SET
+            discount_pct = new_pct,
+            discount_amount = ROUND(total_sum * new_pct / 100, 2)
+        WHERE order_id = p_order_id;
+
+        UPDATE ORDER_ITEMS
+        SET discount_pct = new_pct
+        WHERE order_id = p_order_id;
+    END IF;
+END;
+$$;
