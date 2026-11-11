@@ -248,7 +248,9 @@ INSERT INTO STORES (store_id, name, address, phone, email) VALUES
 
 INSERT INTO PRODUCTS (product_id, category_id, name, unit, barcode, shelf_life_days) VALUES
     (1, 2, 'Печенье «Юбилейное»', 'шт', '4600605020001', 180),
-    (2, 3, 'Кофе «Вдохновение»', 'шт', '4600605020002', 365);
+    (2, 3, 'Кофе «Вдохновение»', 'шт', '4600605020002', 365),
+    (3, 2, 'Пряники «Тульские»', 'шт', '4600605020003', 90),
+    (4, 3, 'Чай «Индийский»', 'шт', '4600605020004', 720);
 
 INSERT INTO DISCOUNT_RULES (rule_id, customer_id, discount_pct, valid_from, valid_to) VALUES
     (1, 1, 5.00, DATE '2026-01-01', NULL);
@@ -256,24 +258,34 @@ INSERT INTO DISCOUNT_RULES (rule_id, customer_id, discount_pct, valid_from, vali
 INSERT INTO SUPPLIES (supply_id, supplier_id, product_id, quantity, price_per_unit, supply_date, expiry_date, document_number) VALUES
     (1, 1, 1, 500.00, 45.50, DATE '2026-03-01', DATE '2026-09-01', 'ПР-001'),
     (2, 2, 2, 120.00, 310.00, DATE '2026-03-05', DATE '2027-03-05', 'ПР-002'),
-    (3, 1, 1, 10.00, 40.00, DATE '2005-11-01', DATE '2005-12-15', 'ПР-2005-12');
+    (3, 1, 1, 10.00, 40.00, DATE '2005-11-01', DATE '2005-12-15', 'ПР-2005-12'),
+    (4, 1, 3, 80.00, 55.00, DATE '2026-03-02', DATE '2026-06-01', 'ПР-003'),
+    (5, 2, 4, 50.00, 120.00, DATE '2026-03-06', DATE '2028-03-06', 'ПР-004');
 
 INSERT INTO WAREHOUSE_STOCK (product_id, quantity) VALUES
     (1, 400.00),
-    (2, 80.00);
+    (2, 80.00),
+    (3, 200.00),
+    (4, 50.00);
 
 INSERT INTO PLAN_STOCK (product_id, plan_qty) VALUES
     (1, 600.00),
-    (2, 100.00);
+    (2, 100.00),
+    (3, 150.00),
+    (4, 50.00);
 
 INSERT INTO STORE_STOCK (product_id, store_id, quantity) VALUES
     (1, 1, 40.00),
-    (2, 1, 10.00);
+    (2, 1, 10.00),
+    (3, 1, 20.00),
+    (4, 1, 5.00);
 
 INSERT INTO PRODUCT_PRICE_HISTORY (price_id, product_id, supplier_id, price, valid_from, valid_to) VALUES
     (1, 1, 1, 45.50, DATE '2026-03-01', NULL),
     (2, 2, 2, 310.00, DATE '2026-03-05', NULL),
-    (3, 1, 1, 98.00, DATE '2026-09-01', NULL);
+    (3, 1, 1, 98.00, DATE '2026-09-01', NULL),
+    (4, 3, 1, 55.00, DATE '2026-03-02', NULL),
+    (5, 4, 2, 120.00, DATE '2026-03-06', NULL);
 
 INSERT INTO ORDERS (order_id, customer_id, store_id, order_date, total_sum, discount_pct, discount_amount) VALUES
     (1, 1, 1, DATE '2026-03-10', 864.50, 5.00, 45.50);
@@ -410,7 +422,7 @@ BEGIN
 END;
 $$;
 
--- Скидка покупателя: история ? текущий заказ
+-- Скидка покупателя: средние траты из отчёта vs сумма текущего заказа
 CREATE OR REPLACE PROCEDURE recalc_customer_discounts(p_customer_id INT, p_order_id INT DEFAULT NULL)
 LANGUAGE plpgsql
 AS $$
@@ -419,10 +431,10 @@ DECLARE
     curr DECIMAL := 0;
     pct DECIMAL;
 BEGIN
-    SELECT COALESCE(SUM(total_sum), 0) INTO hist
-    FROM ORDERS
-    WHERE customer_id = p_customer_id
-      AND order_id IS DISTINCT FROM p_order_id;
+    SELECT COALESCE(avg_order_sum, 0) INTO hist
+    FROM CUSTOMER_PURCHASE_REPORTS
+    WHERE customer_id = p_customer_id;
+    hist := COALESCE(hist, 0);
 
     SELECT COALESCE(total_sum, 0) INTO curr
     FROM ORDERS
