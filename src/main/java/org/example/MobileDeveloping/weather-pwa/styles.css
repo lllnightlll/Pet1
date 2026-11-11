@@ -1,4 +1,88 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+body {
+    padding: 12px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.4;
+}
+
+h1 {
+    font-size: 1.6rem;
+    margin: 0 0 12px;
+}
+
+#city-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin: 12px 0;
+}
+
+#city-input,
+button,
+.button-like {
+    font-size: 16px;
+    min-height: 44px;
+    padding: 8px 12px;
+}
+
+#city-input {
+    flex: 1 1 180px;
+    min-width: 0;
+    width: 100%;
+}
+
+button,
+.button-like {
+    cursor: pointer;
+}
+
+/* Label выглядит как кнопка и открывает камеру без JS. */
+.button-like {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #8a8a8a;
+    border-radius: 4px;
+    background-color: #f2f2f2;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/*
+ * input нельзя display:none — iOS тогда не открывает камеру по тапу на label.
+ */
+.button-like input[type="file"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* Индикатор сети: зелёный онлайн, красный офлайн. */
+#network-status:empty {
+    display: none;
+}
+
 #network-status {
     display: inline-block;
     padding: 4px 10px;
@@ -13,10 +97,11 @@
     background-color: #c62828;
 }
 
-#camera-video,
 #photo-preview {
     display: block;
-    max-width: 320px;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
     margin-top: 8px;
 }
 
@@ -34,13 +119,7 @@
 
 #geo-foreground-warning {
     color: #b26a00;
-    max-width: 28em;
-}
-
-#pickme-result {
-    font-size: 1.4em;
-    font-weight: 700;
-    margin-top: 4px;
+    max-width: 100%;
 }
 
 #weather-card.is-shuffling {

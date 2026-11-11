@@ -39,34 +39,22 @@ class WeatherConfig {
         'Geolocation works only while the screen is active. iOS does not update coordinates in the background.';
 
     static PHOTO_BUTTON_ID = 'photo-button';
-    static CAPTURE_BUTTON_ID = 'capture-button';
-    static CAMERA_VIDEO_ID = 'camera-video';
+    static PHOTO_FILE_INPUT_ID = 'photo-file-input';
     static CAMERA_CANVAS_ID = 'camera-canvas';
     static PHOTO_PREVIEW_ID = 'photo-preview';
     static PHOTO_SIZE_ID = 'photo-size';
     static PHOTO_MIME = 'image/jpeg';
     static PHOTO_QUALITY = 0.72;
     static PHOTO_MAX_WIDTH = 800;
+    static PHOTO_ACCEPT = 'image/*';
+    static PHOTO_CAPTURE = 'environment';
     static CAMERA_HIDDEN_CLASS = 'is-hidden';
-    static CAMERA_PERMISSION_DENIED = 'Camera permission denied';
-    static CAMERA_NOT_FOUND = 'Camera not found';
     static CAMERA_UNSUPPORTED = 'Camera is not supported';
+    static PHOTO_COMPRESSING = 'Compressing...';
     static PHOTO_SIZE_LABEL = 'Compressed:';
     static PHOTO_SEND_BUTTON_ID = 'photo-send-button';
     static PHOTO_SAVED_MESSAGE = 'Photo saved to IndexedDB:';
     static PHOTO_SAVE_ERROR = 'Photo was not saved';
-    static PICKME_RESULT_ID = 'pickme-result';
-    static PICKME_YES = 'пикми';
-    static PICKME_NO = 'не пикми';
-    static PICKME_LOADING = 'определяю...';
-    static PICKME_ERROR = 'не пикми';
-    static PICKME_MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model';
-    static PICKME_MATCH_DISTANCE = 0.55;
-    static PICKME_REFERENCE_URLS = [
-        '/img/pickme-1.jpg',
-        '/img/pickme-2.jpg',
-        '/img/pickme-3.jpg'
-    ];
 
     static SHAKE_BUTTON_ID = 'shake-button';
     static SHAKE_STOP_BUTTON_ID = 'shake-stop-button';
@@ -313,24 +301,12 @@ class WeatherApp {
             this.onLocate();
         });
 
-        this.cameraCapture = new CameraCapture({
-            videoElement: document.getElementById(WeatherConfig.CAMERA_VIDEO_ID),
-            canvasElement: document.getElementById(WeatherConfig.CAMERA_CANVAS_ID),
-            previewElement: document.getElementById(WeatherConfig.PHOTO_PREVIEW_ID),
-            startButton: document.getElementById(WeatherConfig.PHOTO_BUTTON_ID),
-            captureButton: document.getElementById(WeatherConfig.CAPTURE_BUTTON_ID),
-            sizeElement: document.getElementById(WeatherConfig.PHOTO_SIZE_ID),
-            sendButton: document.getElementById(WeatherConfig.PHOTO_SEND_BUTTON_ID),
-            resultElement: document.getElementById(WeatherConfig.PICKME_RESULT_ID),
-            classifier: new PickMeClassifier({
-                modelUrl: WeatherConfig.PICKME_MODEL_URL,
-                referenceImageUrls: WeatherConfig.PICKME_REFERENCE_URLS,
-                matchDistance: WeatherConfig.PICKME_MATCH_DISTANCE
-            }),
-            mimeType: WeatherConfig.PHOTO_MIME,
-            quality: WeatherConfig.PHOTO_QUALITY,
-            maxWidth: WeatherConfig.PHOTO_MAX_WIDTH,
-            hiddenClass: WeatherConfig.CAMERA_HIDDEN_CLASS
+        this.networkStatus = new NetworkStatus(WeatherConfig.NETWORK_STATUS_ELEMENT_ID, {
+            onlineText: WeatherConfig.ONLINE_TEXT,
+            offlineText: WeatherConfig.OFFLINE_TEXT,
+            onlineClass: WeatherConfig.ONLINE_CLASS,
+            offlineClass: WeatherConfig.OFFLINE_CLASS,
+            onOnline: () => this.refreshCurrentCity()
         });
 
         this.shakeGame = new ShakeGame({
@@ -347,12 +323,16 @@ class WeatherApp {
             onShake: (city) => this.onShakeShuffle(city)
         });
 
-        this.networkStatus = new NetworkStatus(WeatherConfig.NETWORK_STATUS_ELEMENT_ID, {
-            onlineText: WeatherConfig.ONLINE_TEXT,
-            offlineText: WeatherConfig.OFFLINE_TEXT,
-            onlineClass: WeatherConfig.ONLINE_CLASS,
-            offlineClass: WeatherConfig.OFFLINE_CLASS,
-            onOnline: () => this.refreshCurrentCity()
+        this.cameraCapture = new CameraCapture({
+            fileInput: document.getElementById(WeatherConfig.PHOTO_FILE_INPUT_ID),
+            canvasElement: document.getElementById(WeatherConfig.CAMERA_CANVAS_ID),
+            previewElement: document.getElementById(WeatherConfig.PHOTO_PREVIEW_ID),
+            sizeElement: document.getElementById(WeatherConfig.PHOTO_SIZE_ID),
+            sendButton: document.getElementById(WeatherConfig.PHOTO_SEND_BUTTON_ID),
+            mimeType: WeatherConfig.PHOTO_MIME,
+            quality: WeatherConfig.PHOTO_QUALITY,
+            maxWidth: WeatherConfig.PHOTO_MAX_WIDTH,
+            hiddenClass: WeatherConfig.CAMERA_HIDDEN_CLASS
         });
 
         this.restoreCache();
@@ -567,4 +547,8 @@ class WeatherApp {
     }
 }
 
-new WeatherApp();
+try {
+    new WeatherApp();
+} catch (error) {
+    console.error('WeatherApp failed to start', error);
+}

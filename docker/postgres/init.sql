@@ -296,7 +296,7 @@ INSERT INTO MOVEMENTS (movement_id, product_id, store_id, movement_type, quantit
 INSERT INTO ORDER_ITEMS (order_id, product_id, quantity, price, discount_pct) VALUES
     (1, 1, 20.00, 45.50, 5.00);
 
--- Излишки и недостача по складу: по каждому товару (факт минус сумма поставок).
+-- Излишки и недостача по складу: по каждому товару (факт минус сумма поставок)
 SELECT
     product.name,
     COALESCE(stock.quantity, 0) - COALESCE(supply_totals.supplied_qty, 0) AS warehouse_delta

@@ -176,6 +176,9 @@ class NetworkStatus {
      * @param {boolean} isOnline
      */
     render(isOnline) {
+        if (!this.element) {
+            return;
+        }
         this.element.textContent = isOnline ? this.onlineText : this.offlineText;
         this.element.classList.toggle(this.onlineClass, isOnline);
         this.element.classList.toggle(this.offlineClass, !isOnline);

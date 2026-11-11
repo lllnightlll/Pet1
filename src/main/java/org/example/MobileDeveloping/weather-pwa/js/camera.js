@@ -1,18 +1,16 @@
 /**
- * Камера: getUserMedia → <video> → кадр на <canvas> → сжатый JPEG через toDataURL.
+ * Фото через системную камеру: <input capture> → canvas JPEG → IndexedDB.
+ * Live getUserMedia на iOS Safari «тупит» (play + display:none + video.load),
+ * а label+file input открывает камеру сразу по тапу, даже до загрузки app.js.
  */
 class CameraCapture {
     /**
      * @param {{
-     *   videoElement: HTMLVideoElement,
+     *   fileInput: HTMLInputElement,
      *   canvasElement: HTMLCanvasElement,
      *   previewElement: HTMLImageElement,
-     *   startButton: HTMLElement,
-     *   captureButton: HTMLElement,
      *   sizeElement: HTMLElement,
      *   sendButton: HTMLElement,
-     *   resultElement: HTMLElement,
-     *   classifier: PickMeClassifier,
      *   mimeType: string,
      *   quality: number,
      *   maxWidth: number,
@@ -20,113 +18,123 @@ class CameraCapture {
      * }} options
      */
     constructor(options) {
-        this.videoElement = options.videoElement;
+        this.fileInput = options.fileInput;
         this.canvasElement = options.canvasElement;
         this.previewElement = options.previewElement;
-        this.startButton = options.startButton;
-        this.captureButton = options.captureButton;
         this.sizeElement = options.sizeElement;
         this.sendButton = options.sendButton;
-        this.resultElement = options.resultElement;
-        this.classifier = options.classifier;
         this.mimeType = options.mimeType;
         this.quality = options.quality;
         this.maxWidth = options.maxWidth;
         this.hiddenClass = options.hiddenClass;
-        this.stream = null;
         this.lastDataUrl = null;
 
-        this.startButton.addEventListener('click', () => {
-            this.start();
-        });
-        this.captureButton.addEventListener('click', () => {
-            this.capture();
-        });
+        this.prepareFileInput();
+        this.fileInput.addEventListener('change', () => this.onFileChosen());
         this.sendButton.addEventListener('click', () => {
-            this.send();
+            this.send().catch((error) => {
+                this.sizeElement.textContent = this.toUserMessage(error);
+            });
         });
-
-        this.setCameraUi(false);
     }
 
     /**
-     * Открывает камеру. Браузер покажет запрос разрешения.
+     * capture=environment — задняя камера iOS, не галерея.
+     * input нельзя display:none: Safari тогда игнорирует tap по label.
      */
-    async start() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            this.sizeElement.textContent = WeatherConfig.CAMERA_UNSUPPORTED;
+    prepareFileInput() {
+        this.fileInput.setAttribute('accept', WeatherConfig.PHOTO_ACCEPT);
+        this.fileInput.setAttribute('capture', WeatherConfig.PHOTO_CAPTURE);
+        this.fileInput.setAttribute('type', 'file');
+    }
+
+    /**
+     * Пользователь снял кадр в системной камере и вернулся на страницу.
+     */
+    async onFileChosen() {
+        const file = this.fileInput.files && this.fileInput.files[0];
+        this.fileInput.value = '';
+
+        if (!file) {
             return;
         }
 
-        this.stop();
+        this.sizeElement.textContent = WeatherConfig.PHOTO_COMPRESSING;
 
         try {
-            this.stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' },
-                audio: false
-            });
-        } catch (firstError) {
-            try {
-                this.stream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
-                    audio: false
-                });
-            } catch (error) {
-                this.sizeElement.textContent = this.toUserMessage(error);
-                return;
-            }
+            const dataUrl = await this.compressFile(file);
+            this.lastDataUrl = dataUrl;
+            this.previewElement.src = dataUrl;
+            this.previewElement.classList.remove(this.hiddenClass);
+            this.sendButton.classList.remove(this.hiddenClass);
+            this.sizeElement.textContent = this.formatDataUrlSize(dataUrl);
+        } catch (error) {
+            this.sizeElement.textContent = this.toUserMessage(error);
         }
-
-        this.videoElement.srcObject = this.stream;
-        await this.videoElement.play();
-        this.resultElement.textContent = '';
-        this.setCameraUi(true);
     }
 
     /**
-     * Берёт текущий кадр, уменьшает и сжимает в JPEG (~100–200 КБ).
+     * Уменьшает снимок и кодирует JPEG, как раньше кадр с <video>.
+     * @param {Blob} file
+     * @returns {Promise<string>}
      */
-    async capture() {
-        if (!this.stream) {
-            return;
-        }
-
-        const sourceWidth = this.videoElement.videoWidth;
-        const sourceHeight = this.videoElement.videoHeight;
+    async compressFile(file) {
+        const image = await this.loadImage(file);
+        const sourceWidth = image.width;
+        const sourceHeight = image.height;
         const scale = Math.min(1, this.maxWidth / sourceWidth);
-        const targetWidth = Math.round(sourceWidth * scale);
-        const targetHeight = Math.round(sourceHeight * scale);
+        const targetWidth = Math.max(1, Math.round(sourceWidth * scale));
+        const targetHeight = Math.max(1, Math.round(sourceHeight * scale));
 
         this.canvasElement.width = targetWidth;
         this.canvasElement.height = targetHeight;
 
         const context = this.canvasElement.getContext('2d');
-        context.drawImage(this.videoElement, 0, 0, targetWidth, targetHeight);
+        context.drawImage(image, 0, 0, targetWidth, targetHeight);
 
-        const dataUrl = this.canvasElement.toDataURL(this.mimeType, this.quality);
-        this.lastDataUrl = dataUrl;
-        this.previewElement.src = dataUrl;
-        this.previewElement.classList.remove(this.hiddenClass);
-        this.sendButton.classList.remove(this.hiddenClass);
-        this.sizeElement.textContent = this.formatDataUrlSize(dataUrl);
-        this.resultElement.textContent = WeatherConfig.PICKME_LOADING;
+        if (typeof image.close === 'function') {
+            image.close();
+        }
 
-        this.stop();
-        this.setCameraUi(false);
-        await this.classifyPreview();
+        return this.canvasElement.toDataURL(this.mimeType, this.quality);
     }
 
     /**
-     * Пишет под фото «пикми» / «не пикми» по сравнению лиц.
+     * imageOrientation: from-image — иначе iOS-снимки часто лежат на боку.
+     * @param {Blob} file
+     * @returns {Promise<ImageBitmap|HTMLImageElement>}
      */
-    async classifyPreview() {
-        try {
-            await this.previewElement.decode();
-            const label = await this.classifier.classify(this.previewElement);
-            this.resultElement.textContent = label;
-        } catch (error) {
-            this.resultElement.textContent = WeatherConfig.PICKME_ERROR;
+    async loadImage(file) {
+        if (typeof createImageBitmap === 'function') {
+            try {
+                return await createImageBitmap(file, { imageOrientation: 'from-image' });
+            } catch (error) {
+                return await createImageBitmap(file);
+            }
         }
+
+        return this.loadHtmlImage(file);
+    }
+
+    /**
+     * @param {Blob} file
+     * @returns {Promise<HTMLImageElement>}
+     */
+    loadHtmlImage(file) {
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            const objectUrl = URL.createObjectURL(file);
+
+            image.onload = () => {
+                URL.revokeObjectURL(objectUrl);
+                resolve(image);
+            };
+            image.onerror = () => {
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error(WeatherConfig.CAMERA_UNSUPPORTED));
+            };
+            image.src = objectUrl;
+        });
     }
 
     /**
@@ -144,26 +152,6 @@ class CameraCapture {
         }
 
         this.sizeElement.textContent = `${WeatherConfig.PHOTO_SAVED_MESSAGE} ${photoId}`;
-    }
-
-    stop() {
-        if (!this.stream) {
-            return;
-        }
-
-        this.stream.getTracks().forEach((track) => {
-            track.stop();
-        });
-        this.stream = null;
-        this.videoElement.srcObject = null;
-    }
-
-    /**
-     * @param {boolean} isLive
-     */
-    setCameraUi(isLive) {
-        this.videoElement.classList.toggle(this.hiddenClass, !isLive);
-        this.captureButton.classList.toggle(this.hiddenClass, !isLive);
     }
 
     /**
@@ -184,13 +172,6 @@ class CameraCapture {
      * @returns {string}
      */
     toUserMessage(error) {
-        const name = error && error.name;
-        if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-            return WeatherConfig.CAMERA_PERMISSION_DENIED;
-        }
-        if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
-            return WeatherConfig.CAMERA_NOT_FOUND;
-        }
         return error && error.message ? error.message : WeatherConfig.CAMERA_UNSUPPORTED;
     }
 }
