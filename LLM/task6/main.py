@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 from ucimlrepo import fetch_ucirepo
 
 # python LLM\task6\main.py
@@ -52,7 +53,20 @@ print("клиентов:", len(rfm))
 
 x = np.log1p(rfm[["recency", "frequency", "check"]].to_numpy())
 x = (x - x.mean(axis=0)) / x.std(axis=0)
-rfm["cluster"] = KMeans(n_clusters=4, random_state=42, n_init=10).fit_predict(x)
+
+k = 3
+best = -1.0
+cluster = None
+for n in range(3, 6):
+    cur = KMeans(n_clusters=n, random_state=42, n_init=10).fit_predict(x)
+    score = float(silhouette_score(x, cur))
+    print("k", n, "silhouette", round(score, 4))
+    if score > best:
+        k = n
+        best = score
+        cluster = cur
+rfm["cluster"] = cluster
+print("выбран k =", k, ", silhouette =", round(best, 4))
 
 base = rfm[["recency", "frequency", "check"]].mean()
 centers = rfm.groupby("cluster")[["recency", "frequency", "check"]].mean().sort_index()
@@ -87,19 +101,19 @@ for c in centers.index:
     )
 
 fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-for c in range(4):
+for c in range(k):
     m = rfm["cluster"].to_numpy() == c
     ax[0].scatter(rfm["recency"].to_numpy()[m], rfm["frequency"].to_numpy()[m], s=12, alpha=0.6, label=str(c))
 ax[0].set_xlabel("давность, дни")
 ax[0].set_ylabel("частота, заказы")
-ax[0].set_title("клиенты в 2D, k=4")
+ax[0].set_title("клиенты в 2D, k=" + str(k))
 ax[0].legend()
 
 rel = centers / base
 for i, col in enumerate(["recency", "frequency", "check"]):
-    ax[1].bar(np.arange(4) + (i - 1) * 0.25, rel[col].to_numpy(), 0.25, label=col)
+    ax[1].bar(np.arange(k) + (i - 1) * 0.25, rel[col].to_numpy(), 0.25, label=col)
 ax[1].axhline(1, color="gray", lw=0.8)
-ax[1].set_xticks(np.arange(4))
+ax[1].set_xticks(np.arange(k))
 ax[1].set_ylabel("к среднему клиенту, раз")
 ax[1].set_title("профиль сегментов")
 ax[1].legend()

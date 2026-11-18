@@ -510,7 +510,7 @@ BEGIN
 END;
 $$;
 
--- Скидка покупателя: средние траты из отчёта vs сумма текущего заказа
+-- Скидка покупателя: средние траты из отчёта или сумма текущего заказа
 CREATE OR REPLACE PROCEDURE recalc_customer_discounts(p_customer_id INT, p_order_id INT DEFAULT NULL)
 LANGUAGE plpgsql
 AS $$
