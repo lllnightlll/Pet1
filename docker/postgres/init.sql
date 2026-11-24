@@ -230,6 +230,99 @@ ALTER TABLE PRODUCT_PRICE_HISTORY
     FOREIGN KEY (supplier_id) REFERENCES SUPPLIERS (supplier_id)
     ON DELETE RESTRICT;
 
+CREATE TABLE IF NOT EXISTS CUSTOMER_PURCHASE_REPORTS (
+    customer_id INT PRIMARY KEY
+        REFERENCES CUSTOMERS (customer_id) ON DELETE RESTRICT,
+    customer_name VARCHAR(255) NOT NULL,
+    orders_count INT NOT NULL DEFAULT 0,
+    total_purchases DECIMAL(12, 2) NOT NULL DEFAULT 0,
+    avg_order_sum DECIMAL(12, 2) NOT NULL DEFAULT 0,
+    first_order_date DATE,
+    last_order_date DATE,
+    generated_at TIMESTAMP NOT NULL DEFAULT now()
+);
+
+-- Отчёт по одному клиенту
+CREATE OR REPLACE PROCEDURE build_customer_purchase_report(p_customer_id INT)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO CUSTOMER_PURCHASE_REPORTS (
+        customer_id, customer_name, orders_count, total_purchases,
+        avg_order_sum, first_order_date, last_order_date, generated_at
+    )
+    SELECT
+        customer.customer_id,
+        customer.name,
+        COUNT(orders.order_id),
+        COALESCE(SUM(orders.total_sum), 0),
+        COALESCE(AVG(orders.total_sum), 0),
+        MIN(orders.order_date),
+        MAX(orders.order_date),
+        now()
+    FROM CUSTOMERS customer
+    LEFT JOIN ORDERS orders ON orders.customer_id = customer.customer_id
+    WHERE customer.customer_id = p_customer_id
+    GROUP BY customer.customer_id, customer.name
+    ON CONFLICT (customer_id) DO UPDATE
+    SET customer_name = EXCLUDED.customer_name,
+        orders_count = EXCLUDED.orders_count,
+        total_purchases = EXCLUDED.total_purchases,
+        avg_order_sum = EXCLUDED.avg_order_sum,
+        first_order_date = EXCLUDED.first_order_date,
+        last_order_date = EXCLUDED.last_order_date,
+        generated_at = EXCLUDED.generated_at;
+END;
+$$;
+
+-- Пересчёт скидки по истории покупок
+CREATE OR REPLACE PROCEDURE recalc_customer_discounts(p_customer_id INT)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    hist DECIMAL := 0;
+    pct DECIMAL;
+BEGIN
+    SELECT COALESCE(total_purchases, 0) INTO hist
+    FROM CUSTOMER_PURCHASE_REPORTS
+    WHERE customer_id = p_customer_id;
+    hist := COALESCE(hist, 0);
+
+    pct := CASE
+        WHEN hist >= 1000 THEN 10
+        WHEN hist >= 300 THEN 5
+        ELSE 0
+    END;
+
+    INSERT INTO DISCOUNT_RULES (rule_id, customer_id, discount_pct, valid_from, is_active)
+    VALUES (
+        COALESCE((SELECT MAX(rule_id) FROM DISCOUNT_RULES), 0) + 1,
+        p_customer_id, pct, CURRENT_DATE, TRUE
+    )
+    ON CONFLICT (customer_id) DO UPDATE
+    SET discount_pct = EXCLUDED.discount_pct,
+        is_active = TRUE,
+        valid_from = CURRENT_DATE;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION trg_orders_refresh_customer()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    CALL build_customer_purchase_report(NEW.customer_id);
+    CALL recalc_customer_discounts(NEW.customer_id);
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_orders_after_insert ON ORDERS;
+CREATE TRIGGER trg_orders_after_insert
+AFTER INSERT ON ORDERS
+FOR EACH ROW
+EXECUTE FUNCTION trg_orders_refresh_customer();
+
 INSERT INTO CATEGORIES (category_id, parent_id, name) VALUES
     (1, NULL, 'Бакалея'),
     (2, 1, 'Кондитерские изделия'),
@@ -462,87 +555,3 @@ FROM CUSTOMERS customer
 JOIN ORDERS orders ON orders.customer_id = customer.customer_id
 JOIN DISCOUNT_RULES rules ON rules.customer_id = customer.customer_id
 WHERE rules.is_active = TRUE;
-
-
-
--- Снимок отчёта по клиентам
-CREATE TABLE IF NOT EXISTS CUSTOMER_PURCHASE_REPORTS (
-    customer_id INT PRIMARY KEY
-        REFERENCES CUSTOMERS (customer_id) ON DELETE RESTRICT,
-    customer_name VARCHAR(255) NOT NULL,
-    orders_count INT NOT NULL DEFAULT 0,
-    total_purchases DECIMAL(12, 2) NOT NULL DEFAULT 0,
-    avg_order_sum DECIMAL(12, 2) NOT NULL DEFAULT 0,
-    first_order_date DATE,
-    last_order_date DATE,
-    generated_at TIMESTAMP NOT NULL DEFAULT now()
-);
-
--- Отчёт: история покупок каждого клиента.
-CREATE OR REPLACE PROCEDURE build_customer_purchase_report()
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    DELETE FROM CUSTOMER_PURCHASE_REPORTS;
-
-    INSERT INTO CUSTOMER_PURCHASE_REPORTS (
-        customer_id,
-        customer_name,
-        orders_count,
-        total_purchases,
-        avg_order_sum,
-        first_order_date,
-        last_order_date,
-        generated_at
-    )
-    SELECT
-        customer.customer_id,
-        customer.name,
-        COUNT(orders.order_id),
-        COALESCE(SUM(orders.total_sum), 0),
-        COALESCE(AVG(orders.total_sum), 0),
-        MIN(orders.order_date),
-        MAX(orders.order_date),
-        now()
-    FROM CUSTOMERS customer
-    LEFT JOIN ORDERS orders ON orders.customer_id = customer.customer_id
-    GROUP BY customer.customer_id, customer.name;
-END;
-$$;
-
--- Скидка покупателя: средние траты из отчёта или сумма текущего заказа
-CREATE OR REPLACE PROCEDURE recalc_customer_discounts(p_customer_id INT, p_order_id INT DEFAULT NULL)
-LANGUAGE plpgsql
-AS $$
-DECLARE
-    hist DECIMAL := 0;
-    curr DECIMAL := 0;
-    pct DECIMAL;
-BEGIN
-    SELECT COALESCE(avg_order_sum, 0) INTO hist
-    FROM CUSTOMER_PURCHASE_REPORTS
-    WHERE customer_id = p_customer_id;
-    hist := COALESCE(hist, 0);
-
-    SELECT COALESCE(total_sum, 0) INTO curr
-    FROM ORDERS
-    WHERE order_id = p_order_id
-      AND customer_id = p_customer_id;
-
-    curr := COALESCE(curr, 0);
-    pct := GREATEST(
-        CASE WHEN hist >= 1000 THEN 10 WHEN hist >= 300 THEN 5 ELSE 0 END,
-        CASE WHEN curr >= 500 THEN 10 WHEN curr >= 200 THEN 5 ELSE 0 END
-    );
-
-    INSERT INTO DISCOUNT_RULES (rule_id, customer_id, discount_pct, valid_from, is_active)
-    VALUES (
-        COALESCE((SELECT MAX(rule_id) FROM DISCOUNT_RULES), 0) + 1,
-        p_customer_id, pct, CURRENT_DATE, TRUE
-    )
-    ON CONFLICT (customer_id) DO UPDATE
-    SET discount_pct = EXCLUDED.discount_pct,
-        is_active = TRUE,
-        valid_from = CURRENT_DATE;
-END;
-$$;
