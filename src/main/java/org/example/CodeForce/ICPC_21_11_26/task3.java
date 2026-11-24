@@ -1,4 +1,4 @@
-package org.example.CodeForce.ICPC_21_11_26;
+package org.example.CodeForce.icpc_21_11_26;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
