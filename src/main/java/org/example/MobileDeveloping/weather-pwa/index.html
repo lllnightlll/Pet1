@@ -3,8 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <!--
+      Учебный CSP через <meta> (нет серверного заголовка).
+      script-src без 'unsafe-inline' — инлайн XSS (alert) блокируется.
+      jsDelivr и Nominatim добавлены после Refused to... в Console:
+      localforage с CDN и геокодинг иначе падают.
+      worker-src 'self' — Service Worker только со своего домена.
+      style-src 'unsafe-inline' — учебное упрощение; в продакшене hash/nonce.
+    -->
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self';
+                   script-src 'self' https://cdn.jsdelivr.net;
+                   style-src 'self' 'unsafe-inline';
+                   connect-src 'self' https://api.met.no https://nominatim.openstreetmap.org;
+                   img-src 'self' data: blob:;
+                   worker-src 'self';
+                   manifest-src 'self';">
     <title>Weather</title>
-    <link rel="stylesheet" href="/styles.css?v=21">
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/styles.css?v=27">
     <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
 </head>
 <body>
@@ -39,10 +56,12 @@
     <p id="shake-count"></p>
     <p id="shake-status"></p>
 
-    <script src="/js/storage.js?v=21"></script>
-    <script src="/js/network.js?v=21"></script>
-    <script src="/js/camera.js?v=21"></script>
-    <script src="/js/motion.js?v=21"></script>
-    <script src="/js/app.js?v=21"></script>
+    <script src="/js/storage.js?v=27"></script>
+    <script src="/js/crypto.js?v=27"></script>
+    <script src="/js/network.js?v=27"></script>
+    <script src="/js/camera.js?v=27"></script>
+    <script src="/js/motion.js?v=27"></script>
+    <script src="/js/app.js?v=27"></script>
+    <script src="/js/navigator-sw.js?v=27"></script>
 </body>
 </html>

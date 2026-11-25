@@ -11,6 +11,12 @@ docker build -f weather-pwa/Dockerfile -t my-pwa-lt .
 docker run --rm -p 5500:5500 my-pwa-lt
 ```
 
+Локально:
+
+```
+python server.py
+```
+
 - Локально: http://127.0.0.1:5500/
 - С телефона: URL вида `https://….loca.lt` печатается в логе контейнера (`your url is: …`)
 

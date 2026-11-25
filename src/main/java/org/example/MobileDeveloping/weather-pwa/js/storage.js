@@ -5,18 +5,99 @@ class WeatherIndexedDbCache {
             storeName: 'weather_cache'
         });
         this.maxAgeMs = 24 * 60 * 60 * 1000;
+        this.cipher = null;
+        this.key = null;
     }
 
     /**
-     * Пишет успешный ответ. localForage сам кладёт объект в IndexedDB.
+     * AES-GCM из Шага 4. В DevTools ciphertext — ArrayBuffer, не JSON.
+     * @param {CryptoKey} key
+     * @param {AesGcmCipher} cipher
+     */
+    enableEncryption(key, cipher) {
+        this.key = key;
+        this.cipher = cipher;
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    isEncryptionEnabled() {
+        return Boolean(this.key && this.cipher);
+    }
+
+    /**
+     * Пишет прогноз. Поле data больше не кладём открытым текстом.
      * @param {string} city
      * @param {{name: string, temperature: number}} data
+     * @param {number} [timestamp]
      */
-    async save(city, data) {
-        await this.weatherStore.setItem(city.toLowerCase(), {
-            data: data,
-            timestamp: Date.now()
+    async save(city, data, timestamp) {
+        const savedAt = typeof timestamp === 'number' ? timestamp : Date.now();
+        let record;
+
+        if (this.isEncryptionEnabled()) {
+            const { iv, ciphertext } = await this.cipher.encryptText(
+                this.key,
+                JSON.stringify(data)
+            );
+            record = {
+                iv: iv.buffer.slice(iv.byteOffset, iv.byteOffset + iv.byteLength),
+                ciphertext: ciphertext,
+                timestamp: savedAt
+            };
+        } else {
+            record = { data: data, timestamp: savedAt };
+        }
+
+        await this.weatherStore.setItem(city.toLowerCase(), record);
+    }
+
+    /**
+     * Старые открытые записи переписываем ciphertext+iv тем же timestamp.
+     */
+    async migratePlaintext() {
+        if (!this.isEncryptionEnabled()) {
+            return;
+        }
+
+        const pending = [];
+        await this.weatherStore.iterate((value, key) => {
+            if (value && value.data && !value.ciphertext) {
+                pending.push({ key: key, value: value });
+            }
         });
+
+        for (const item of pending) {
+            await this.save(item.key, item.value.data, item.value.timestamp);
+        }
+    }
+
+    /**
+     * @param {object} cached
+     * @returns {Promise<{data: object, timestamp: number}|null>}
+     */
+    async decodeEntry(cached) {
+        if (!cached) {
+            return null;
+        }
+
+        if (cached.data) {
+            return cached;
+        }
+
+        if (!cached.ciphertext || !this.isEncryptionEnabled()) {
+            return null;
+        }
+
+        const iv = cached.iv instanceof Uint8Array
+            ? cached.iv
+            : new Uint8Array(cached.iv);
+        const plaintext = await this.cipher.decryptText(this.key, iv, cached.ciphertext);
+        return {
+            data: JSON.parse(plaintext),
+            timestamp: cached.timestamp
+        };
     }
 
     /**
@@ -26,11 +107,12 @@ class WeatherIndexedDbCache {
      */
     async get(city) {
         const cached = await this.weatherStore.getItem(city.toLowerCase());
-        if (!cached) {
+        const decoded = await this.decodeEntry(cached);
+        if (!decoded) {
             return null;
         }
 
-        return this.toCacheResult(cached);
+        return this.toCacheResult(decoded);
     }
 
     /**
@@ -38,19 +120,25 @@ class WeatherIndexedDbCache {
      * @returns {Promise<{city: string, data: {name: string, temperature: number}, isStale: boolean}|null>}
      */
     async getLatest() {
+        const entries = [];
+        await this.weatherStore.iterate((value, key) => {
+            entries.push({ key: key, value: value });
+        });
+
         let latestCity = null;
         let latestEntry = null;
 
-        await this.weatherStore.iterate((value, key) => {
-            if (!value || typeof value.timestamp !== 'number' || !value.data) {
-                return;
+        for (const entry of entries) {
+            const decoded = await this.decodeEntry(entry.value);
+            if (!decoded || typeof decoded.timestamp !== 'number' || !decoded.data) {
+                continue;
             }
 
-            if (!latestEntry || value.timestamp > latestEntry.timestamp) {
-                latestCity = key;
-                latestEntry = value;
+            if (!latestEntry || decoded.timestamp > latestEntry.timestamp) {
+                latestCity = entry.key;
+                latestEntry = decoded;
             }
-        });
+        }
 
         if (!latestEntry) {
             return null;

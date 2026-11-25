@@ -70,6 +70,17 @@ class WeatherConfig {
     static SHAKE_PERMISSION_DENIED = 'Motion permission denied';
     static SHAKE_UNSUPPORTED = 'Device motion is not supported';
     static SHUFFLE_CITIES = ['London', 'Paris', 'Tokyo', 'Berlin', 'Rome', 'Madrid', 'Oslo', 'Helsinki'];
+
+    static CRYPTO_DB_NAME = 'security-test';
+    static CRYPTO_DB_VERSION = 1;
+    static CRYPTO_KEYS_STORE = 'keys';
+    static CRYPTO_KEY_ID = 'session_key';
+    static CRYPTO_ALGORITHM = 'AES-GCM';
+    static CRYPTO_KEY_LENGTH = 256;
+    static CRYPTO_EXTRACTABLE = false;
+    static CRYPTO_KEY_USAGES = ['encrypt', 'decrypt'];
+    static CRYPTO_IV_BYTES = 12;
+    static CRYPTO_DEMO_PAYLOAD = '{"temp": 5}';
 }
 
 /**
@@ -323,6 +334,18 @@ class WeatherApp {
             onShake: (city) => this.onShakeShuffle(city)
         });
 
+        this.weatherCryptoDemo = new WeatherCryptoDemo();
+        this.weatherCryptoDemo.run()
+            .then(async (key) => {
+                weatherCache.enableEncryption(key, this.weatherCryptoDemo.cipher);
+                await weatherCache.migratePlaintext();
+                this.restoreCache();
+            })
+            .catch((error) => {
+                console.error('Weather crypto demo failed', error);
+                this.restoreCache();
+            });
+
         this.cameraCapture = new CameraCapture({
             fileInput: document.getElementById(WeatherConfig.PHOTO_FILE_INPUT_ID),
             canvasElement: document.getElementById(WeatherConfig.CAMERA_CANVAS_ID),
@@ -334,8 +357,6 @@ class WeatherApp {
             maxWidth: WeatherConfig.PHOTO_MAX_WIDTH,
             hiddenClass: WeatherConfig.CAMERA_HIDDEN_CLASS
         });
-
-        this.restoreCache();
     }
 
     /**
