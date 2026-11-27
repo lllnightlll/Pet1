@@ -48,20 +48,385 @@ public class task5 {
             long a = in.nextLong();
             long x = in.nextLong();
             long k = in.nextLong();
-            long step = 1;
-            long pos = 0;
-            while (a > pos) {
-                a += x;
-                if ((a <= pos + step) && k > 0) {
-                    k--;
-                    step = 1;
-                }
-                pos += step;
-                step *= 2;
-            }
-            out.println(a-x);
+            out.println(maxStair(a, x, k));
         }
         out.close();
+    }
+
+    /** Позиция Санни в конце последнего раунда, где Обри ещё строго сзади. */
+    private static long maxStair(long a, long x, long k) {
+        long lead = a + x - 1;
+        long rounds = 1;
+        if (k > 0) {
+            long[] spent = spend(lead, x, k);
+            rounds += spent[0];
+            lead = spent[1];
+        }
+        rounds += finalRounds(lead, x);
+        return a + rounds * x;
+    }
+
+    private static long finalRounds(long lead, long x) {
+        long v = 2;
+        long rounds = 0;
+        while (lead + x > v) {
+            lead += x - v;
+            if (v > (Long.MAX_VALUE >> 1)) {
+                break;
+            }
+            v <<= 1;
+            rounds++;
+        }
+        return rounds;
+    }
+
+    private static int qStar(long x) {
+        int q = 1;
+        while (q < 62 && (long) q * x + 1 - (1L << q) >= 0) {
+            q++;
+        }
+        return q - 1;
+    }
+
+    private static long deltaLead(int q, long x) {
+        return (long) q * x + 1 - (1L << q);
+    }
+
+    private static long uDeath(int q, long x) {
+        long u = 1L << q;
+        return (u - x) - (long) (q - 1) * x + u - 2;
+    }
+
+    private static long uAlpha(int q, long x) {
+        long u = 1L << q;
+        return u / 2 - (long) (q - 1) * x + u - 2;
+    }
+
+    private static long slopeOf(int q, long x) {
+        long u = 1L << q;
+        return u - 1 - (long) q * x;
+    }
+
+    private static boolean reaches(long lead, int q, long x, long k) {
+        if (lead <= uDeath(q, x)) {
+            return true;
+        }
+        long slope = slopeOf(q, x);
+        long alpha = uAlpha(q, x);
+        if (lead <= alpha) {
+            return slope >= 0;
+        }
+        if (slope <= 0) {
+            return false;
+        }
+        if (k > 0 && slope > Long.MAX_VALUE / k) {
+            return true;
+        }
+        return lead - alpha <= slope * k;
+    }
+
+    private static int choose(long lead, long x, long k) {
+        for (int q = 1; q < 62; q++) {
+            if ((1L << q) > x && reaches(lead, q, x, k)) {
+                return q;
+            }
+        }
+        return -1;
+    }
+
+    /** Smallest i >= 0 with lead + i*dL <= bound, or -1 if lead only grows away. */
+    private static long firstHit(long lead, long dL, long bound) {
+        if (lead <= bound) {
+            return 0;
+        }
+        if (dL >= 0) {
+            return -1;
+        }
+        long e = -dL;
+        return (lead - bound + e - 1) / e;
+    }
+
+    private static long runLength(long lead, long k, int q, long x) {
+        long dL = deltaLead(q, x);
+        long slope = slopeOf(q, x);
+        long best = k;
+        if (slope <= 0) {
+            long bound = uDeath(q, x);
+            if (dL > 0) {
+                if (lead > bound) {
+                    return 0;
+                }
+                best = Math.min(best, (bound - lead) / dL + 1);
+            } else if (dL == 0 && lead > bound) {
+                return 0;
+            }
+        }
+        for (int r = 1; r < q; r++) {
+            if ((1L << r) <= x) {
+                continue;
+            }
+            long hit = -1;
+            long death = uDeath(r, x);
+            long rs = slopeOf(r, x);
+            if (rs <= 0) {
+                hit = firstHit(lead, dL, death);
+            } else {
+                long hitDeath = firstHit(lead, dL, death);
+                long alpha = uAlpha(r, x);
+                long hitSlope;
+                if (k > 0 && rs > Long.MAX_VALUE / k) {
+                    hitSlope = 0;
+                } else {
+                    long us0 = alpha + rs * k;
+                    if (lead <= us0) {
+                        hitSlope = 0;
+                    } else {
+                        long coef = dL + rs;
+                        if (coef <= 0) {
+                            hitSlope = -1;
+                        } else {
+                            hitSlope = (lead - us0 + coef - 1) / coef;
+                        }
+                    }
+                }
+                if (hitDeath < 0) {
+                    hit = hitSlope;
+                } else if (hitSlope < 0) {
+                    hit = hitDeath;
+                } else {
+                    hit = Math.min(hitDeath, hitSlope);
+                }
+            }
+            if (hit >= 0 && hit < best) {
+                best = hit;
+            }
+        }
+        return best < 1 ? 0 : best;
+    }
+
+    private static long[] spend(long lead, long x, long k) {
+        long rounds = 0;
+        int star = qStar(x);
+        for (int guard = 0; k > 0 && guard < 400; guard++) {
+            int q = choose(lead, x, k);
+            if (q < 0) {
+                break;
+            }
+            if (q == star || q == star + 1) {
+                long[] basin = basin(lead, k, x, star);
+                rounds += basin[0];
+                lead = basin[1];
+                break;
+            }
+            long t = runLength(lead, k, q, x);
+            if (t < 1) {
+                t = 1;
+            }
+            long dL = deltaLead(q, x);
+            if (t > 1 && choose(lead + (t - 1) * dL, x, k - (t - 1)) != q) {
+                long lo = 1;
+                long hi = t - 1;
+                long ok = 1;
+                while (lo <= hi) {
+                    long mid = (lo + hi) >>> 1;
+                    if (choose(lead + (mid - 1) * dL, x, k - (mid - 1)) == q) {
+                        ok = mid;
+                        lo = mid + 1;
+                    } else {
+                        hi = mid - 1;
+                    }
+                }
+                t = ok;
+            }
+            lead += t * dL;
+            rounds += t * q;
+            k -= t;
+        }
+        return new long[] {rounds, lead};
+    }
+
+    private static long[] basin(long lead, long k, long x, int star) {
+        long bound = uDeath(star, x);
+        return fastAb(lead, k, bound, deltaLead(star, x), star, deltaLead(star + 1, x), star + 1);
+    }
+
+    private static long[] fastAb(long lead, long k, long bound, long dA, long rA, long dB, long rB) {
+        if (k <= 0) {
+            return new long[] {0, lead};
+        }
+        long e = -dB;
+        long rounds = 0;
+        if (dA == 0) {
+            if (lead <= bound) {
+                return new long[] {k * rA, lead};
+            }
+            long need = (lead - bound - 1) / e + 1;
+            long take = Math.min(need, k);
+            lead += take * dB;
+            rounds += take * rB;
+            k -= take;
+            if (k > 0) {
+                rounds += k * rA;
+            }
+            return new long[] {rounds, lead};
+        }
+        if (lead > bound) {
+            long need = (lead - bound - 1) / e + 1;
+            long take = Math.min(need, k);
+            lead += take * dB;
+            rounds += take * rB;
+            k -= take;
+            if (k == 0) {
+                return new long[] {rounds, lead};
+            }
+        }
+        if ((bound - lead) / dA + 1 >= k) {
+            lead += k * dA;
+            rounds += k * rA;
+            return new long[] {rounds, lead};
+        }
+        long rem = (bound - lead) % dA;
+        long cA = (bound - lead) / dA + 1;
+        lead = bound + dA - rem;
+        rounds += cA * rA;
+        k -= cA;
+        long over = dA - rem;
+        long cB = (over - 1) / e + 1;
+        if (cB >= k) {
+            lead += k * dB;
+            rounds += k * rB;
+            return new long[] {rounds, lead};
+        }
+        lead -= cB * e;
+        rounds += cB * rB;
+        k -= cB;
+        if (k == 0) {
+            return new long[] {rounds, lead};
+        }
+        long ml = bound - lead;
+        long lo = 0;
+        long hi = k;
+        long groups = 0;
+        while (lo <= hi) {
+            long mid = (lo + hi) >>> 1;
+            long[] ab = sumGroups(mid, ml, dA, e);
+            if (ab[0] + ab[1] <= k) {
+                groups = mid;
+                lo = mid + 1;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        long[] ab = sumGroups(groups, ml, dA, e);
+        lead += ab[0] * dA + ab[1] * dB;
+        rounds += ab[0] * rA + ab[1] * rB;
+        k -= ab[0] + ab[1];
+        if (k == 0) {
+            return new long[] {rounds, lead};
+        }
+        ml = bound - lead;
+        long[] one = groupStats(ml, dA, e);
+        long takeA = Math.min(one[0], k);
+        lead += takeA * dA;
+        rounds += takeA * rA;
+        k -= takeA;
+        if (k > 0) {
+            long takeB = Math.min(one[1], k);
+            lead += takeB * dB;
+            rounds += takeB * rB;
+        }
+        return new long[] {rounds, lead};
+    }
+
+    /** @return {compliments on the slow speed, compliments on the fast speed} */
+    private static long[] sumGroups(long g, long ml, long dA, long e) {
+        if (g <= 0) {
+            return new long[] {0, 0};
+        }
+        if (e <= dA) {
+            long s = dA % e;
+            long base = dA / e;
+            if (s == 0) {
+                return new long[] {g, g * base};
+            }
+            long extra = countLt(g, e, ml, (e - s % e) % e, s);
+            return new long[] {g, g * base + extra};
+        }
+        long low = e % dA;
+        long base = e / dA;
+        if (low == 0) {
+            return new long[] {g * base, g};
+        }
+        long start = mod(ml % dA - low, dA);
+        long ge = g - countLt(g, dA, start, low, dA - low);
+        return new long[] {g * base + ge, g};
+    }
+
+    private static long[] groupStats(long ml, long dA, long e) {
+        if (e <= dA) {
+            long s = dA % e;
+            long base = dA / e;
+            long cB = base + (s > 0 && ml < s ? 1 : 0);
+            return new long[] {1, cB};
+        }
+        return new long[] {ml / dA + 1, 1};
+    }
+
+    private static long countLt(long n, long mod, long start, long step, long limit) {
+        if (n <= 0 || limit <= 0) {
+            return 0;
+        }
+        if (limit >= mod) {
+            return n;
+        }
+        start = mod(start, mod);
+        step = mod(step, mod);
+        return floorSumSigned(n, mod, step, start) - floorSumSigned(n, mod, step, start - limit);
+    }
+
+    private static long floorSumSigned(long n, long m, long a, long b) {
+        if (n <= 0) {
+            return 0;
+        }
+        a = mod(a, m);
+        if (b >= 0) {
+            return floorSum(n, m, a, b);
+        }
+        long t = (-b + m - 1) / m;
+        return floorSum(n, m, a, b + t * m) - t * n;
+    }
+
+    private static long floorSum(long n, long m, long a, long b) {
+        long ans = 0;
+        while (true) {
+            if (a >= m) {
+                ans += (n - 1) * n / 2 * (a / m);
+                a %= m;
+            }
+            if (b >= m) {
+                ans += n * (b / m);
+                b %= m;
+            }
+            long yMax = (a * n + b) / m;
+            if (yMax == 0) {
+                return ans;
+            }
+            long xMax = yMax * m - b;
+            ans += (n - (xMax + a - 1) / a) * yMax;
+            long nextN = yMax;
+            long nextM = a;
+            long nextB = (a - xMax % a) % a;
+            long nextA = m;
+            n = nextN;
+            m = nextM;
+            b = nextB;
+            a = nextA;
+        }
+    }
+
+    private static long mod(long a, long m) {
+        long r = a % m;
+        return r < 0 ? r + m : r;
     }
 
     /**
